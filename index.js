@@ -1,6 +1,7 @@
 const axios = require('axios');
 
 const { interpretarOperador } = require('./lib/Utils');
+const { InvalidOperator, Denied, ExpectedArgumentMissing} = require('./lib/errors')
 
 class MagnusBilling {
     constructor(api_key, api_secret, public_url) {
@@ -8,6 +9,106 @@ class MagnusBilling {
         this.api_secret = api_secret;
         this.public_url = public_url;
         this.filter = [];
+
+
+        
+        this._mappingSinaisOperacao = {
+            '^': 'st',   // starts with   | começa com
+            '$': 'ed',   // ends with     | termina com
+            '~=': 'ct',  // contains      | contém
+            '*': 'ct',   // contains      | contém (v2.0)
+            '=': 'eq',   // equal         | igual
+            '<': 'lt',   // less than     | menor que
+            '>': 'gt',   // greater than  | maior que
+        }
+        this._validSinaisOperacao = ['st', 'ed', 'ct', 'eq', 'lt', 'gt']
+
+        this._mappingTraducaoCampos = {
+            'id': 'id',
+            'id_usuario': 'id_user',
+            'id_grupo': 'id_group',
+            'id_grupo_agente': 'id_group_agent',
+            'id_plano': 'id_plan',
+            'id_oferta': 'id_offer',
+            'usuario': 'username',
+            'senha': 'password',
+            'credito': 'credit',
+            'ativo': 'active',
+            'data_criacao': 'creationdate',
+            'data_primeiro_uso': 'firstusedate',
+            'data_expiracao': 'expirationdate',
+            'ativar_expiracao': 'enableexpire',
+            'dias_expiracao': 'expiredays',
+            'sobrenome': 'lastname',
+            'nome': 'firstname',
+            'endereco': 'address',
+            'cidade': 'city',
+            'bairro': 'neighborhood',
+            'estado': 'state',
+            'pais': 'country',
+            'cep': 'zipcode',
+            'telefone': 'phone',
+            'celular': 'mobile',
+            'email': 'email',
+            'email2': 'email2',
+            'vat': 'vat',
+            'nome_empresa': 'company_name',
+            'nome_comercial': 'commercial_name',
+            'website_empresa': 'company_website',
+            'numero_estado': 'state_number',
+            'dist': 'dist',
+            'valor_contrato': 'contract_value',
+            'ultima_utilizacao': 'lastuse',
+            'tipo_pagamento': 'typepaid',
+            'limite_credito': 'creditlimit',
+            'idioma': 'language',
+            'redial': 'redial',
+            'chave_login': 'loginkey',
+            'ultima_notificacao': 'last_notification',
+            'notificacao_credito': 'credit_notification',
+            'notificacao_credito_diaria': 'credit_notification_daily',
+            'restricao': 'restriction',
+            'pin_cartao_telefonico': 'callingcard_pin',
+            'prefixo_local': 'prefix_local',
+            'callshop': 'callshop',
+            'plano_dia': 'plan_day',
+            'gravar_chamada': 'record_call',
+            'ativo_paypal': 'active_paypal',
+            'boleto': 'boleto',
+            'dia_boleto': 'boleto_day',
+            'descricao': 'description',
+            'ultimo_login': 'last_login',
+            'google_authenticator_ativar': 'googleAuthenticator_enable',
+            'google_authenticator_chave': 'google_authenticator_key',
+            'doc': 'doc',
+            'id_sacado_sac': 'id_sacado_sac',
+            'espaco_disco': 'disk_space',
+            'limite_conta_sip': 'sipaccountlimit',
+            'limite_chamada': 'calllimit',
+            'cps_limite': 'cpslimit',
+            'erro_limite_chamada': 'calllimit_error',
+            'formato_mix_monitor': 'mix_monitor_format',
+            'mostrar_preco_venda_transferencia': 'transfer_show_selling_price',
+            'taxa_servico_bd_transferencia': 'transfer_bdservice_rate',
+            'lucro_dbbl_rocket_transferencia': 'transfer_dbbl_rocket_profit',
+            'lucro_bkash_transferencia': 'transfer_bkash_profit',
+            'lucro_flexiload_transferencia': 'transfer_flexiload_profit',
+            'lucro_internacional_transferencia': 'transfer_international_profit',
+            'transferencia_dbbl_rocket': 'transfer_dbbl_rocket',
+            'transferencia_bkash': 'transfer_bkash',
+            'transferencia_flexiload': 'transfer_flexiload',
+            'transferencia_internacional': 'transfer_international',
+            'uso_restricao': 'restriction_use',
+            'servicos_email': 'email_services',
+            'email_did': 'email_did',
+            'limite_chamada_entrante': 'inbound_call_limit',
+            'idNomeGrupo': 'idGroupname',
+            'idGrupoTipoUsuario': 'idGroupid_user_type',
+            'idNomePlano': 'idPlanname',
+            'idUsuarioNomeUsuario': 'idUserusername',
+            'contagem_sip': 'sip_count',
+            'oferta': 'offer'
+        }
     }
 
     async query(req = {}) {
@@ -46,7 +147,7 @@ class MagnusBilling {
             return response.data;
         } catch (error) {
             console.log(`[${error.status}/${error.code}] --> ${error.config.method}:${error.config.url} [${error.config.data}]`)
-            throw new Error(`Axios error: ${error.message}`);
+            throw new Error(`Axios error: ${error.message}`).stack;
         }
     }
 
@@ -151,7 +252,7 @@ class MagnusBilling {
         if (query.rows && query.rows[0]) {
             return query.rows[0];
         } else {
-            throw new Error('Usuário não encontrado.');
+            throw new Error('Usuário não encontrado.').stack;
         }
     }
     
@@ -164,20 +265,33 @@ class MagnusBilling {
             type: type,
             field: field,
             value: value,
-            comparison: interpretarOperador(comparison)
+            comparison: comparison
         });
     }
 
-    getFilters(filterList) {
+    interpretFilters(filterList) {
         if (filterList.length > 0) {
             filterList.forEach(filtro => {
                 console.log(`Filtros recebidos: ${filtro}`);
                 const [campo, operador, valor, tipo] = filtro;
-                console.log('Campo    : ' + campo);
-                console.log('Operador : ' + operador);
+
+                // 'usuario' -> 'username'
+                const campoInterpretado = this._mappingTraducaoCampos[campo] || campo;
+                // '=' -> 'eq'
+                const operadorInterpretado = this._mappingSinaisOperacao[operador] || operador;
+
+                if (!this._validSinaisOperacao.includes(operadorInterpretado)) {
+                    throw new InvalidOperator(`Invalid filter operator for comparisons "${operadorInterpretado}"`).stack
+                }
+
+                // Confirmando
+                console.log('Campo    : ' + campoInterpretado);
+                console.log('Operador : ' + operadorInterpretado);
                 console.log('Valor    : ' + valor);
                 console.log('Tipo     : ' + tipo);
-                this.setFilter(campo, valor, operador, tipo);
+
+                // Setando, de fato, o filtro
+                this.setFilter(campoInterpretado, valor, operadorInterpretado, tipo);
             });
         }
     }
@@ -185,11 +299,9 @@ class MagnusBilling {
     _ExpectedArgs(data, expectedArgs) {
         const missingArgs = expectedArgs.filter(arg => !(arg in data));
         if (missingArgs.length > 0) {
-            throw new Error(`Missing arguments: ${missingArgs.join(', ')}`);
+            throw new ExpectedArgumentMissing(`Missing arguments: ${missingArgs.join(', ')}`).stack;
         }
     }
-
-
 
 
     // API Simplificada
@@ -223,7 +335,7 @@ class MagnusBilling {
             find: async (filters) => {
                 let module = 'user';
                 if (filters !== undefined && filters.length > 0) {
-                    this.getFilters(filters)
+                    this.interpretFilters(filters)
                 }
                 return await this.read(module);
             },
@@ -232,6 +344,43 @@ class MagnusBilling {
                 let module = 'user';
                 // É importante citar que o ID esperado aqui, não é id_user. É, realmente, o ID interno do usuário. "id"
                 return await this.destroy(module, data.id);
+            },
+            fDelete: async (filters) => {
+                // smart delete, delete by filter
+                let module = 'user';
+                await this.clients.users.find(filters)
+                    .then(ret => {
+                        
+                        if (!ret || !ret.count || (ret.count = 1 && !ret.rows || !ret.rows[0])) {
+                            throw new Denied(`Pesquisa com o filtro "${filters}" retornou uma estrutura de dados incorreta: ${JSON.stringify(ret)}`).stack
+                        } else if (ret.count != 1 ) {
+                            throw new Denied(`Filtro "${filters}": ${ret.count} resultados.`).stack
+                        } 
+
+                        console.log(ret)
+
+                        let user = ret.rows[0]
+                        console.log('O id desse usuário é: ' + user.id)
+                        // confirmar que existe um retorno
+                        // confirmar que existe rows no retorno
+                        // confirmar que só tem 1 item
+                        // acessar o primeiro item
+                        // pegar o id
+                        // console.log(ret)
+                    })
+                    .catch(err => {
+                        throw new Denied(`Erro na requisição`).stack
+                    })
+                    // propositalmente não dou catch, responsabilidade do usuário
+                .finally(() => {
+                    console.log('Finalização do método FIND dentro do método FDELETE.')
+                })
+
+                
+
+
+                return null
+                // return await this.destroy(module, data.id);
             }
         },
         sipUsers: {

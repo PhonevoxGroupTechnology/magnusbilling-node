@@ -7,30 +7,62 @@ const MAGNUS_HOST = 'http://167.114.97.2/mbilling';
 
 const mb = new MagnusBilling(API_KEY, API_SECRET, MAGNUS_HOST);
 
-// mb.clients.users.new({usuario: 'adrian-test', senha: 'adrian-testing', email: 'tewdwste@gmail.com', limite_chamadas: 5})
+// mb.clients.users.new({
+//     usuario: 'adrian-test', 
+//     senha: 'adrian-testing', 
+//     email: 'tewdwste@gmail.com', 
+//     limite_chamadas: 5})
 //     .then (ret => {
-//         console.log('success')
 //         console.log(ret)
 //     })
 //     .catch(error => {
-//         console.log('error')
-//         console.error('Erro:', error)
+//         console.error(error)
+//     })
+//     .finally(() => {
+//         console.log('User Creation: done')
 //     })
 
-mb.clients.users.find([
-    ['username', 'eq', '123123'],
+
+// mb.clients.users.find([
+//     ['usuario', '=', '0053'],
+// ])
+//     .then (ret => {
+//         console.log('ret: ' + JSON.stringify(ret));
+//         console.log('id: ' + ret.rows[0].id );
+//         return ret
+//     })
+//     .then (wasd => {
+//         console.log('222222222222222222222222222222222222222222222222222222222222222')
+//         console.log(wasd)
+//     })
+//     .catch (error => {
+//         console.log('3333333333333333333333333333333333333333333333333333333333333333333333')
+//         console.error(error);
+//     })
+//     .finally(() => {
+//         console.log('4444444444444444444444444444444444444444444444444444444444444444444444444444')
+//         console.log('User Search: done')
+//     })
+
+mb.clients.users.fDelete([
+    ['=', '='],
 ])
     .then (ret => {
-        console.log('success');
-        console.log(ret);
+        console.log('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ RETORNO FINAL: success @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+        console.log(ret)
     })
-    .catch (error => {
-        console.log('error!');
-        console.error('erro:', error);
+    .catch (err => {
+        console.log('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ RETORNO FINAL: err @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+        console.error(' deu erro mano ')
+        console.log('err: ' + err)
+    })
+    .finally (() => {
+        console.log('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ RETORNO FINAL @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+        console.log('fim')
     })
 
 
-// mb.getFields('user')
+    // mb.getFields('user')
 //     .then(ret => {
 //         console.log('success')
 //         console.log(ret)
