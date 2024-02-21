@@ -1,7 +1,6 @@
 const axios = require('axios');
 
-const { interpretarOperador } = require('./lib/Utils');
-const { InvalidOperator, Denied, ExpectedArgumentMissing} = require('./lib/errors')
+const { InvalidOperator, Denied, ValidatingError, FindError, ExpectedArgumentMisuse, ExpectedArgumentMissingArg, ExpectedArgumentTooMuchArgs } = require('./lib/Errors')
 
 class MagnusBilling {
     constructor(api_key, api_secret, public_url) {
@@ -9,7 +8,6 @@ class MagnusBilling {
         this.api_secret = api_secret;
         this.public_url = public_url;
         this.filter = [];
-
 
         
         this._mappingSinaisOperacao = {
@@ -270,7 +268,7 @@ class MagnusBilling {
     }
 
     interpretFilters(filterList) {
-        if (filterList.length > 0) {
+        if (filterList !== undefined && filterList.length > 0) {
             filterList.forEach(filtro => {
                 console.log(`Filtros recebidos: ${filtro}`);
                 const [campo, operador, valor, tipo] = filtro;
@@ -281,7 +279,7 @@ class MagnusBilling {
                 const operadorInterpretado = this._mappingSinaisOperacao[operador] || operador;
 
                 if (!this._validSinaisOperacao.includes(operadorInterpretado)) {
-                    throw new InvalidOperator(`Invalid filter operator for comparisons "${operadorInterpretado}"`).stack
+                    throw new InvalidOperator(`Operador comparativo "${operadorInterpretado}" inválido. Seu filtro está correto?`).stack
                 }
 
                 // Confirmando
@@ -296,13 +294,39 @@ class MagnusBilling {
         }
     }
 
-    _ExpectedArgs(data, expectedArgs) {
-        const missingArgs = expectedArgs.filter(arg => !(arg in data));
-        if (missingArgs.length > 0) {
-            throw new ExpectedArgumentMissing(`Missing arguments: ${missingArgs.join(', ')}`).stack;
+    validateReturn(ret) {
+        if (!ret ) {
+            throw new ValidatingError(`Não houve retorno para a requisição`).stack
+        } else if (!ret.count) {
+            throw new ValidatingError(`Retorno com estrutura inesperada: ${JSON.stringify(ret)}`).stack
+        } else if (ret.count >= 1 && (ret.rows != null && !ret.rows)) {
+            throw new ValidatingError(`Retorno com estrutura inesperada: ${JSON.stringify(ret)}`).stack
+        }
+        return ret
+    }
+
+    _ExpectedArgs(data, expectedArgs, condition = "AND") {
+        if (condition === "AND") {
+            const missingArgs = expectedArgs.filter(arg => !(arg in data));
+            if (missingArgs.length > 0) {
+                throw new ExpectedArgumentMissingArg(`Argumentos faltantes: ${missingArgs.join(', ')}`).stack;
+            }
+        } else if (condition === "OR") {
+            if (!expectedArgs.some(arg => arg in data)) {
+                throw new ExpectedArgumentMissingArg(`Argumentos necessários: ${expectedArgs.join(', ')}`).stack;
+            }
+        } else if (condition === "XOR") {
+            if (!(expectedArgs.some(arg => arg in data) ^ expectedArgs.every(arg => arg in data))) {
+                throw new ExpectedArgumentTooMuchArgs(`Apenas um dos argumentos é necessário: ${expectedArgs.join(', ')}`).stack;
+            }
+        } else {
+            throw new ExpectedArgumentMisuse(`Condição inválida: ${condition}. Condição precisa ser "AND" ou "OR".`).stack;
         }
     }
 
+    opcional(chave, valor) {
+        return valor !== undefined ? { [chave]: valor } : {};
+    }
 
     // API Simplificada
     clients = {
@@ -310,77 +334,87 @@ class MagnusBilling {
             new: async (data) => {
                 this._ExpectedArgs(data, ['usuario', 'senha', 'email'])
                 /*
-                usuario: '123123'
-                senha: '123123'
-                email: '123123@gmail' //  n deveria ser obrigatorio
-                id_grupo: 3
-                id_plano: 1
+                {
+                usuario: '123123',
+                senha: '123123',
+                email: '123123@gmail', //  n deveria ser obrigatorio
+                id_grupo: 3,
+                id_plano: 1,
+                }
                 */
                 let payload = {
-                    createUser: 1,
-                    id: 0,
+                    createUser: 1, // Fixo
+                    id: 0, // Fixo
                     username: data.usuario, // Obrigatório
                     password: data.senha, // Obrigatório
                     email: data.email, // Obrigatório
                     active: data.ativo ?? 1, // Default: ativo (pois estou CRIANDO um usuário)
                     id_group: data.id_grupo ?? 3, // Default: Cliente
-                    ...(data.primeiro_nome !== undefined && { firstname: data.primeiro_nome }), // Opcional
-                    ...(data.ultimo_nome !== undefined && { lastname: data.ultimo_nome }), // Opcional
-                    ...(data.id_plano !== undefined && { id_plan: data.id_plano }), // Opcional
-                    ...(data.credito !== undefined && { credit: data.credito }), // Opcional
-                    ...(data.limite_chamadas !== undefined && { calllimit: data.limite_chamadas }), // Opcional
+                    ...this.opcional('firstname', data.primeiro_nome), // Opcional
+                    ...this.opcional('lastname', data.ultimo_nome), // Opcional
+                    ...this.opcional('id_plan', data.id_plano), // Opcional
+                    ...this.opcional('credit', data.credito), // Opcional
+                    ...this.opcional('calllimit', data.limite_chamadas), // Opcional
                 }
                 return await this.query(payload);
             },
             find: async (filters) => {
                 let module = 'user';
-                if (filters !== undefined && filters.length > 0) {
-                    this.interpretFilters(filters)
-                }
+                this.interpretFilters(filters);
                 return await this.read(module);
             },
             delete: async (data) => {
-                this._ExpectedArgs(data, ['id'])
+                this._ExpectedArgs(data, ['id', 'filtro'], "XOR");
+                data.id = data.filtro ? await this.clients.users.fGetId(data.filtro) : data.id; // Se passou filtro, uso. Se não, uso ID. Garanto que não tem ambos através do ExpectedArgs:XOR
+
                 let module = 'user';
-                // É importante citar que o ID esperado aqui, não é id_user. É, realmente, o ID interno do usuário. "id"
-                return await this.destroy(module, data.id);
+                return await this.destroy(module, data.id); // Lembrando, o ID esperado aqui é o ID interno, e não o número do usuario!
+            },
+            edit: async (data) => {
+                this._ExpectedArgs(data, ['id', 'filtro'], "XOR");
+                data.id = data.filtro ? await this.clients.users.fGetId(data.filtro) : data.id; // Se passou filtro, uso. Se não, uso ID. Garanto que não tem ambos através do ExpectedArgs:XOR
+                
+                let module = 'user';
+                let payload = {
+                    module: module,
+                    action: 'save',
+                    id: data.id,
+                    ...this.opcional('username', data.usuario), // Opcional
+                    ...this.opcional('password', data.senha), // Opcional
+                    ...this.opcional('email', data.email), // Opcional
+                    ...this.opcional('firstname', data.primeiro_nome), // Opcional
+                    ...this.opcional('lastname', data.ultimo_nome), // Opcional
+                    ...this.opcional('id_plan', data.id_plano), // Opcional
+                    ...this.opcional('credit', data.credito), // Opcional
+                    ...this.opcional('calllimit', data.limite_chamadas), // Opcional
+                }
+                return await this.query(payload);
             },
             fDelete: async (filters) => {
                 // smart delete, delete by filter
                 let module = 'user';
-                await this.clients.users.find(filters)
-                    .then(ret => {
-                        
-                        if (!ret || !ret.count || (ret.count = 1 && !ret.rows || !ret.rows[0])) {
-                            throw new Denied(`Pesquisa com o filtro "${filters}" retornou uma estrutura de dados incorreta: ${JSON.stringify(ret)}`).stack
-                        } else if (ret.count != 1 ) {
-                            throw new Denied(`Filtro "${filters}": ${ret.count} resultados.`).stack
-                        } 
-
-                        console.log(ret)
-
-                        let user = ret.rows[0]
-                        console.log('O id desse usuário é: ' + user.id)
-                        // confirmar que existe um retorno
-                        // confirmar que existe rows no retorno
-                        // confirmar que só tem 1 item
-                        // acessar o primeiro item
-                        // pegar o id
-                        // console.log(ret)
-                    })
-                    .catch(err => {
-                        throw new Denied(`Erro na requisição`).stack
-                    })
-                    // propositalmente não dou catch, responsabilidade do usuário
-                .finally(() => {
-                    console.log('Finalização do método FIND dentro do método FDELETE.')
-                })
-
-                
-
-
-                return null
-                // return await this.destroy(module, data.id);
+                try {
+                    const userId = await this.clients.users.fGetId(filters);
+                    return await this.destroy(module, userId);
+                } catch (error) {
+                    throw error;
+                }
+            },
+            fGetId: async (filters) => {
+                try {
+                    const ret = await this.clients.users.find(filters);
+                    this.validateReturn(ret);
+            
+                    if (parseInt(ret.count) !== 1) {
+                        throw (`Filtro "${filters}": ${ret.count} resultados.`);
+                    } else {
+                        const user = ret.rows[0];
+                        console.log(`---> O ID desse usuário é: ${user.id}`);
+                        return user.id;
+                    }
+                } catch (err) {
+                    throw new FindError(`${err}`).stack;
+                }
             }
         },
         sipUsers: {

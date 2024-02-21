@@ -7,10 +7,12 @@ const MAGNUS_HOST = 'http://167.114.97.2/mbilling';
 
 const mb = new MagnusBilling(API_KEY, API_SECRET, MAGNUS_HOST);
 
+// Criar um usuário novo
 // mb.clients.users.new({
-//     usuario: 'adrian-test', 
+//     usuario: 'adrian test', 
 //     senha: 'adrian-testing', 
-//     email: 'tewdwste@gmail.com', 
+//     email: 'adrian@phonevox.com.br', 
+//     primeiro_nome: 'adrian teste',
 //     limite_chamadas: 5})
 //     .then (ret => {
 //         console.log(ret)
@@ -18,51 +20,60 @@ const mb = new MagnusBilling(API_KEY, API_SECRET, MAGNUS_HOST);
 //     .catch(error => {
 //         console.error(error)
 //     })
-//     .finally(() => {
-//         console.log('User Creation: done')
-//     })
+// .finally(() => {
+//     console.log('User Creation: done')
+// })
 
-
+// Localizar um usuário usando filtros
 // mb.clients.users.find([
-//     ['usuario', '=', '0053'],
+//     ['usuario', '=', 'adrian-test'],
 // ])
 //     .then (ret => {
-//         console.log('ret: ' + JSON.stringify(ret));
-//         console.log('id: ' + ret.rows[0].id );
-//         return ret
+//         console.log(ret)
 //     })
-//     .then (wasd => {
-//         console.log('222222222222222222222222222222222222222222222222222222222222222')
-//         console.log(wasd)
+//     .catch(error => {
+//         console.error(error)
 //     })
-//     .catch (error => {
-//         console.log('3333333333333333333333333333333333333333333333333333333333333333333333')
-//         console.error(error);
-//     })
-//     .finally(() => {
-//         console.log('4444444444444444444444444444444444444444444444444444444444444444444444444444')
-//         console.log('User Search: done')
-//     })
+// .finally(() => {
+//     console.log('Find: done')
+// })
 
-mb.clients.users.fDelete([
-    ['=', '='],
-])
-    .then (ret => {
-        console.log('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ RETORNO FINAL: success @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
-        console.log(ret)
-    })
-    .catch (err => {
-        console.log('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ RETORNO FINAL: err @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
-        console.error(' deu erro mano ')
-        console.log('err: ' + err)
-    })
-    .finally (() => {
-        console.log('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ RETORNO FINAL @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
-        console.log('fim')
-    })
+// Deletar um usuário utilizando filtros
+// mb.clients.users.delete({
+//     filtro: [
+//         ['usuario', '=', 'batatafrita'],
+//     ],
+// })
+//     .then (ret => {
+//         console.log(ret)
+//     })
+//     .catch(error => {
+//         console.error(error)
+//     })
+// .finally(() => {
+//     console.log('Edit: done')
+// })
+
+// Editar um usuário
+// mb.clients.users.edit({
+//     filtro: [
+//         ['usuario', '=', 'batatafrita'],
+//     ],
+//     usuario: 'arroz',
+//     senha: 'feijao',
+// })
+//     .then (ret => {
+//         console.log(ret)
+//     })
+//     .catch(error => {
+//         console.error(error)
+//     })
+// .finally(() => {
+//     console.log('Edit: done')
+// })
 
 
-    // mb.getFields('user')
+// mb.getFields('user')
 //     .then(ret => {
 //         console.log('success')
 //         console.log(ret)
@@ -71,17 +82,3 @@ mb.clients.users.fDelete([
 //         console.log('error')
 //         console.error("Erro ao obter os módulos:", error);
 //     });
-
-// mb.clients.users.new({
-//     username: '0053'
-// });
-
-// mb.clients.users.find({
-//     id_group: 3,
-//     username: '0053'
-// })
-
-// mb.clients.users.delete({
-//     id: 1,
-//     username: '0053'
-// })
