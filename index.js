@@ -9,7 +9,7 @@ class MagnusBilling {
         this.public_url = public_url;
         this.filter = [];
 
-        
+
         this._mappingSinaisOperacao = {
             '^': 'st',   // starts with   | começa com
             '$': 'ed',   // ends with     | termina com
@@ -21,7 +21,7 @@ class MagnusBilling {
         }
         this._validSinaisOperacao = ['st', 'ed', 'ct', 'eq', 'lt', 'gt']
 
-        this._mappingTraducaoCampos = {
+        this._mappingTraducaoCamposUsers = {
             'id': 'id',
             'id_usuario': 'id_user',
             'id_grupo': 'id_group',
@@ -107,6 +107,87 @@ class MagnusBilling {
             'contagem_sip': 'sip_count',
             'oferta': 'offer'
         }
+
+        this._mappingTraducaoCamposSipAccounts = {
+            "id_usuario": "id_user",
+            "nome": "name",
+            "codigo_conta": "accountcode",
+            "extensao_registro": "regexten",
+            "flags_ama": "amaflags",
+            "grupo_chamada": "callgroup",
+            "caller_id": "callerid",
+            "midia_direta": "directmedia",
+            "contexto": "context",
+            "ip_padrao": "DEFAULTip",
+            "modo_dtmf": "dtmfmode",
+            "usuario_origem": "fromuser",
+            "dominio_origem": "fromdomain",
+            "host": "host",
+            "grupo_sip": "sip_group",
+            "inseguro": "insecure",
+            "idioma": "language",
+            "caixa_postal": "mailbox",
+            "segredo_md5": "md5secret",
+            "nat": "nat",
+            "negar": "deny",
+            "permitir": "permit",
+            "grupo_pickup": "pickupgroup",
+            "porta": "port",
+            "qualificar": "qualify",
+            "rtptimeout": "rtptimeout",
+            "rtpholdtimeout": "rtpholdtimeout",
+            "segredo": "secret",
+            "tipo": "type",
+            "desabilitar": "disallow",
+            "permitir": "allow",
+            "segundos_registro": "regseconds",
+            "endereco_ip": "ipaddr",
+            "contato_completo": "fullcontact",
+            "configurar_variavel": "setvar",
+            "servidor_registro": "regserver",
+            "ultimos_milissegundos": "lastms",
+            "usuario_padrao": "defaultuser",
+            "autenticacao": "auth",
+            "inscrever_mwi": "subscribemwi",
+            "extensao_vm": "vmexten",
+            "numero_cid": "cid_number",
+            "apresentacao_chamada": "callingpres",
+            "requisitar_telefone": "usereqphone",
+            "sugerir_moh": "mohsuggest",
+            "permitir_transferencia": "allowtransfer",
+            "autoframing": "autoframing",
+            "taxa_max_chamada": "maxcallbitrate",
+            "proxy_saida": "outboundproxy",
+            "rtpkeepalive": "rtpkeepalive",
+            "agente_usuario": "useragent",
+            "limite_chamada": "calllimit",
+            "status_linha": "lineStatus",
+            "url_eventos": "url_events",
+            "falso_ring": "ringfalse",
+            "gravar_chamada": "record_call",
+            "caixa_voicemail": "voicemail",
+            "encaminhar": "forward",
+            "bloquear_reg_chamada": "block_call_reg",
+            "tempo_discagem": "dial_timeout",
+            "prefixo_tecnico": "techprefix",
+            "alias": "alias",
+            "descricao": "description",
+            "adicionar_param": "addparameter",
+            "amd": "amd",
+            "cnl": "cnl",
+            "id_grupo_trunk": "id_trunk_group",
+            "suporte_video": "videosupport",
+            "tipo_encaminhamento": "type_forward",
+            "id_ivr": "id_ivr",
+            "id_fila": "id_queue",
+            "id_sip": "id_sip",
+            "extensao": "extension",
+            "email_voicemail": "voicemail_email",
+            "senha_voicemail": "voicemail_password",
+            "config_sip": "sip_config",
+            "mostrar_peer": "sipshowpeer"
+        }
+          
     }
 
     async query(req = {}) {
@@ -127,12 +208,12 @@ class MagnusBilling {
             'Key': this.api_key,
             'Sign': sign
         };
-        
+
         console.log(`Sending request to ${this.public_url}/index.php/${module}/${action}`)
         console.log(`Data: ${JSON.stringify(post_data)}`)
         console.log(`Headers: ${JSON.stringify(headers)}`)
         console.log(`Request: ${JSON.stringify(req)}`)
-        
+
         try {
             const response = await axios.post(`${this.public_url}/index.php/${module}/${action}`, post_data, {
                 headers: headers,
@@ -153,10 +234,10 @@ class MagnusBilling {
         data.module = module;
         data.action = 'save';
         data.id = 0;
-    
+
         return await this.query(data);
     }
-    
+
     async createDID(data) {
         return await this.create('did', data)
     }
@@ -165,7 +246,7 @@ class MagnusBilling {
         data.module = module;
         data.action = 'save';
         data.id = id;
-    
+
         return await this.query(data);
     }
 
@@ -216,26 +297,26 @@ class MagnusBilling {
     async createUser(data) {
         data.createUser = 1;
         data.id = 0;
-    
+
         return await this.query(data);
     }
-    
+
     async getModules() {
         return await this.query({
             getModules: 1
         });
     }
-    
+
     async getMenu(username) {
         return await this.query({
             username: username,
             getMenu: 1
         });
     }
-    
+
     async getId(module, field, value) {
         this.setFilter(field, value, 'eq');
-    
+
         const query = await this.query({
             module: module,
             action: 'read',
@@ -244,16 +325,16 @@ class MagnusBilling {
             limit: 1,
             filter: JSON.stringify(this.filter)
         });
-    
+
         this.clearFilter();
-    
+
         if (query.rows && query.rows[0]) {
             return query.rows[0];
         } else {
             throw new Error('Usuário não encontrado.').stack;
         }
     }
-    
+
     clearFilter() {
         this.filter = [];
     }
@@ -274,7 +355,7 @@ class MagnusBilling {
                 const [campo, operador, valor, tipo] = filtro;
 
                 // 'usuario' -> 'username'
-                const campoInterpretado = this._mappingTraducaoCampos[campo] || campo;
+                const campoInterpretado = this._mappingTraducaoCamposUsers[campo] || campo;
                 // '=' -> 'eq'
                 const operadorInterpretado = this._mappingSinaisOperacao[operador] || operador;
 
@@ -295,7 +376,7 @@ class MagnusBilling {
     }
 
     validateReturn(ret) {
-        if (!ret ) {
+        if (!ret) {
             throw new ValidatingError(`Não houve retorno para a requisição`).stack
         } else if (!ret.count) {
             throw new ValidatingError(`Retorno com estrutura inesperada: ${JSON.stringify(ret)}`).stack
@@ -332,16 +413,23 @@ class MagnusBilling {
     clients = {
         users: {
             new: async (data) => {
-                this._ExpectedArgs(data, ['usuario', 'senha', 'email'])
-                /*
-                {
-                usuario: '123123',
-                senha: '123123',
-                email: '123123@gmail', //  n deveria ser obrigatorio
-                id_grupo: 3,
-                id_plano: 1,
-                }
+                /**
+                 * Cria um novo usuário com os dados fornecidos.
+                 * @param {Object} data - Os dados do usuário a serem criados.
+                 * @param {string} data.usuario - O nome de usuário do novo usuário (obrigatório).
+                 * @param {string} data.senha - A senha do novo usuário (obrigatório).
+                 * @param {string} data.email - O endereço de e-mail do novo usuário (obrigatório).
+                 * @param {number} data.ativo - O status de ativação do usuário (opcional, padrão: 1).
+                 * @param {number} data.id_grupo - O ID do grupo do usuário (opcional, padrão: 3).
+                 * @param {string} data.primeiro_nome - O primeiro nome do usuário (opcional).
+                 * @param {string} data.ultimo_nome - O sobrenome do usuário (opcional).
+                 * @param {number} data.id_plano - O ID do plano do usuário (opcional).
+                 * @param {number} data.credito - O crédito do usuário (opcional).
+                 * @param {number} data.limite_chamadas - O limite de chamadas do usuário (opcional).
+                 * @returns {Promise} - Uma Promise que resolve com o resultado da consulta ao banco de dados.
+                 * @throws {Error} - Se os argumentos obrigatórios não forem fornecidos (usuario, senha, email).
                 */
+                this._ExpectedArgs(data, ['usuario', 'senha', 'email'], "AND")
                 let payload = {
                     createUser: 1, // Fixo
                     id: 0, // Fixo
@@ -350,6 +438,7 @@ class MagnusBilling {
                     email: data.email, // Obrigatório
                     active: data.ativo ?? 1, // Default: ativo (pois estou CRIANDO um usuário)
                     id_group: data.id_grupo ?? 3, // Default: Cliente
+                    ...this.opcional('prefix_local', data.prefix_local), // teste
                     ...this.opcional('firstname', data.primeiro_nome), // Opcional
                     ...this.opcional('lastname', data.ultimo_nome), // Opcional
                     ...this.opcional('id_plan', data.id_plano), // Opcional
@@ -359,11 +448,25 @@ class MagnusBilling {
                 return await this.query(payload);
             },
             find: async (filters) => {
+                /**
+                 * Encontra usuários com base nos filtros fornecidos.
+                 * Caso não seja repassado um filtro, obtém TODOS os "clients.users" do sistema.
+                 * @param {Object} filters - Os filtros para a consulta (opcional).
+                 * @returns {Promise} - Uma Promise que resolve com os resultados da consulta ao banco de dados.
+                */
                 let module = 'user';
                 this.interpretFilters(filters);
                 return await this.read(module);
             },
             delete: async (data) => {
+                /**
+                 * Exclui um usuário com base no ID fornecido ou no filtro especificado.
+                 * @param {Object} data - Os dados necessários para excluir o usuário.
+                 * @param {number} data.id - O ID do usuário a ser excluído (ou 0 se nenhum ID for fornecido).
+                 * @param {string} data.filtro - O filtro para encontrar o usuário a ser excluído (opcional).
+                 * @returns {Promise} - Uma Promise que resolve com o resultado da exclusão do usuário.
+                 * @throws {Error} - Se ambos id e filtro forem fornecidos, ou se nenhum deles for fornecido.
+                */
                 this._ExpectedArgs(data, ['id', 'filtro'], "XOR");
                 data.id = data.filtro ? await this.clients.users.fGetId(data.filtro) : data.id; // Se passou filtro, uso. Se não, uso ID. Garanto que não tem ambos através do ExpectedArgs:XOR
 
@@ -371,9 +474,25 @@ class MagnusBilling {
                 return await this.destroy(module, data.id); // Lembrando, o ID esperado aqui é o ID interno, e não o número do usuario!
             },
             edit: async (data) => {
+                /**
+                 * Edita um usuário com base no ID fornecido ou no filtro especificado.
+                 * @param {Object} data - Os dados do usuário a serem editados.
+                 * @param {number} data.id - O ID do usuário a ser editado (ou 0 se nenhum ID for fornecido).
+                 * @param {string} data.filtro - O filtro para encontrar o usuário a ser editado (opcional).
+                 * @param {string} data.usuario - O novo nome de usuário (opcional).
+                 * @param {string} data.senha - A nova senha (opcional).
+                 * @param {string} data.email - O novo endereço de e-mail (opcional).
+                 * @param {string} data.primeiro_nome - O novo primeiro nome (opcional).
+                 * @param {string} data.ultimo_nome - O novo sobrenome (opcional).
+                 * @param {number} data.id_plano - O novo ID do plano (opcional).
+                 * @param {number} data.credito - O novo crédito (opcional).
+                 * @param {number} data.limite_chamadas - O novo limite de chamadas (opcional).
+                 * @returns {Promise} - Uma Promise que resolve com o resultado da edição do usuário.
+                 * @throws {Error} - Se ambos id e filtro forem fornecidos, ou se nenhum deles for fornecido.
+                */
                 this._ExpectedArgs(data, ['id', 'filtro'], "XOR");
                 data.id = data.filtro ? await this.clients.users.fGetId(data.filtro) : data.id; // Se passou filtro, uso. Se não, uso ID. Garanto que não tem ambos através do ExpectedArgs:XOR
-                
+
                 let module = 'user';
                 let payload = {
                     module: module,
@@ -390,21 +509,17 @@ class MagnusBilling {
                 }
                 return await this.query(payload);
             },
-            fDelete: async (filters) => {
-                // smart delete, delete by filter
-                let module = 'user';
-                try {
-                    const userId = await this.clients.users.fGetId(filters);
-                    return await this.destroy(module, userId);
-                } catch (error) {
-                    throw error;
-                }
-            },
             fGetId: async (filters) => {
+                /**
+                 * Obtém o ID de um usuário com base nos filtros fornecidos.
+                 * @param {Object} filters - Os filtros para encontrar o usuário.
+                 * @returns {number} - O ID do usuário encontrado.
+                 * @throws {FindError} - Se houver um erro ao encontrar o usuário.
+                */
                 try {
                     const ret = await this.clients.users.find(filters);
                     this.validateReturn(ret);
-            
+
                     if (parseInt(ret.count) !== 1) {
                         throw (`Filtro "${filters}": ${ret.count} resultados.`);
                     } else {
@@ -419,7 +534,93 @@ class MagnusBilling {
         },
         sipUsers: {
             new: async (data) => {
-                // Adicionar conta SIP
+                let module = 'sip'
+                let action = 'save'
+
+                this._ExpectedArgs(data, ['usuario_sip', 'senha'], "AND")
+                let payload = {
+                    module: module,
+                    action: action,
+                    id_user: 26,
+                    defaultuser: data.usuario_sip,
+                    secret: data.senha,
+                    directmedia: data.midia_direta ?? "no",
+                    context: data.contexto ?? "billing",
+                    dtmfmode: data.modo_dtmf ?? "RFC2833",
+                    host: data.host ?? "dynamic",
+                    insecure: data.inseguro ?? "no",
+                    nat: data.nat ?? "force_rport,comedia",
+                    qualify: data.qualify ?? "no",
+                    type: data.tipo ?? "friend",
+                    disallow: data.disallow ?? "all",
+                    allow: data.allow ?? "g729,gsm,opus,alaw,ulaw",
+                    regseconds: data.regseconds ?? null,
+                    allowtransfer: data.allowtransfer ?? "no",
+                    calllimit: data.calllimit ?? 0,
+                    ringfalse: data.ringfalse ?? 0,
+                    record_call: data.record_call ?? 0,
+                    voicemail: data.voicemail ?? 0,
+                    dial_timeout: data.dial_timeout ?? 60,
+                    techprefix: data.techprefix ?? 0,
+                    amd: data.amd ?? 0,
+                    id_trunk_group: data.id_trunk_group ?? 0,
+                    videosupport: data.videosupport ?? "no",
+                    ...this.opcional('voicemail_password', data.voicemail_password),
+                    ...this.opcional('id_user', data.id_user),
+                    ...this.opcional('name', data.name),
+                    ...this.opcional('accountcode', data.accountcode),
+                    ...this.opcional('regexten', data.regexten),
+                    ...this.opcional('amaflags', data.amaflags),
+                    ...this.opcional('callgroup', data.callgroup),
+                    ...this.opcional('callerid', data.callerid),
+                    ...this.opcional('DEFAULTip', data.DEFAULTip),
+                    ...this.opcional('fromuser', data.fromuser),
+                    ...this.opcional('fromdomain', data.fromdomain),
+                    ...this.opcional('sip_group', data.sip_group),
+                    ...this.opcional('language', data.language),
+                    ...this.opcional('mailbox', data.mailbox),
+                    ...this.opcional('md5secret', data.md5secret),
+                    ...this.opcional('deny', data.deny),
+                    ...this.opcional('permit', data.permit),
+                    ...this.opcional('pickupgroup', data.pickupgroup),
+                    ...this.opcional('port', data.port),
+                    ...this.opcional('rtptimeout', data.rtptimeout),
+                    ...this.opcional('rtpholdtimeout', data.rtpholdtimeout),
+                    ...this.opcional('ipaddr', data.ipaddr),
+                    ...this.opcional('fullcontact', data.fullcontact),
+                    ...this.opcional('setvar', data.setvar),
+                    ...this.opcional('regserver', data.regserver),
+                    ...this.opcional('lastms', data.lastms),
+                    ...this.opcional('auth', data.auth),
+                    ...this.opcional('subscribemwi', data.subscribemwi),
+                    ...this.opcional('vmexten', data.vmexten),
+                    ...this.opcional('cid_number', data.cid_number),
+                    ...this.opcional('callingpres', data.callingpres),
+                    ...this.opcional('usereqphone', data.usereqphone),
+                    ...this.opcional('mohsuggest', data.mohsuggest),
+                    ...this.opcional('autoframing', data.autoframing),
+                    ...this.opcional('maxcallbitrate', data.maxcallbitrate),
+                    ...this.opcional('outboundproxy', data.outboundproxy),
+                    ...this.opcional('rtpkeepalive', data.rtpkeepalive),
+                    ...this.opcional('useragent', data.useragent),
+                    ...this.opcional('lineStatus', data.lineStatus),
+                    ...this.opcional('url_events', data.url_events),
+                    ...this.opcional('forward', data.forward),
+                    ...this.opcional('block_call_reg', data.block_call_reg),
+                    ...this.opcional('alias', data.alias),
+                    ...this.opcional('description', data.description),
+                    ...this.opcional('addparameter', data.addparameter),
+                    ...this.opcional('cnl', data.cnl),
+                    ...this.opcional('type_forward', data.type_forward),
+                    ...this.opcional('id_ivr', data.id_ivr),
+                    ...this.opcional('id_queue', data.id_queue),
+                    ...this.opcional('id_sip', data.id_sip),
+                    ...this.opcional('extension', data.extension),
+                    ...this.opcional('voicemail_email', data.voicemail_email),
+                    ...this.opcional('sip_config', data.sip_config),
+                    ...this.opcional('sipshowpeer', data.sipshowpeer)
+                };
+                return await this.query(payload);
             },
         }
     };
