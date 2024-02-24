@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const { InvalidOperator, Denied, ValidatingError, FindError, ExpectedArgumentMisuse, ExpectedArgumentMissingArg, ExpectedArgumentTooMuchArgs } = require('./lib/Errors')
+const { InvalidOperator, Denied, ValidatingError, FindError, ExpectedArgumentMisuse, ExpectedArgumentMissingArg, ExpectedArgumentTooManyArguments } = require('./lib/Errors')
 
 class MagnusBilling {
     constructor(api_key, api_secret, public_url) {
@@ -225,6 +225,7 @@ class MagnusBilling {
             console.log(`Response: ${JSON.stringify(response.data)}`)
             return response.data;
         } catch (error) {
+            console.log(error)
             console.log(`[${error.status}/${error.code}] --> ${error.config.method}:${error.config.url} [${error.config.data}]`)
             throw new Error(`Axios error: ${error.message}`).stack;
         }
@@ -397,9 +398,16 @@ class MagnusBilling {
                 throw new ExpectedArgumentMissingArg(`Argumentos necessários: ${expectedArgs.join(', ')}`).stack;
             }
         } else if (condition === "XOR") {
-            if (!(expectedArgs.some(arg => arg in data) ^ expectedArgs.every(arg => arg in data))) {
-                throw new ExpectedArgumentTooMuchArgs(`Apenas um dos argumentos é necessário: ${expectedArgs.join(', ')}`).stack;
+            const presentArgsCount = expectedArgs.filter(arg => arg in data).length;
+            if (presentArgsCount === 0) {
+                throw new ExpectedArgumentMissingArg(`Ao menos um argumento necessário: ${expectedArgs.join(', ')}`).stack;
             }
+            if (!(presentArgsCount === 1)) {
+                throw new ExpectedArgumentTooManyArguments(`Apenas um dos argumentos é necessário: ${expectedArgs.join(', ')}`).stack;
+            }
+            // if (!(expectedArgs.some(arg => arg in data) ^ expectedArgs.every(arg => arg in data))) {
+            //     throw new ExpectedArgumentTooManyArguments(`Apenas um dos argumentos é necessário: ${expectedArgs.join(', ')}`).stack;
+            // }
         } else {
             throw new ExpectedArgumentMisuse(`Condição inválida: ${condition}. Condição precisa ser "AND" ou "OR".`).stack;
         }
@@ -537,34 +545,39 @@ class MagnusBilling {
                 let module = 'sip'
                 let action = 'save'
 
-                this._ExpectedArgs(data, ['usuario_sip', 'senha'], "AND")
+                this._ExpectedArgs(data, ['defaultuser', 'secret'], "AND")
+                this._ExpectedArgs(data, ['filtro', 'id_user'], "XOR")
+
                 let payload = {
-                    module: module,
-                    action: action,
-                    id_user: 26,
-                    defaultuser: data.usuario_sip,
-                    secret: data.senha,
-                    directmedia: data.midia_direta ?? "no",
-                    context: data.contexto ?? "billing",
-                    dtmfmode: data.modo_dtmf ?? "RFC2833",
-                    host: data.host ?? "dynamic",
-                    insecure: data.inseguro ?? "no",
-                    nat: data.nat ?? "force_rport,comedia",
-                    qualify: data.qualify ?? "no",
-                    type: data.tipo ?? "friend",
-                    disallow: data.disallow ?? "all",
-                    allow: data.allow ?? "g729,gsm,opus,alaw,ulaw",
-                    regseconds: data.regseconds ?? null,
-                    allowtransfer: data.allowtransfer ?? "no",
-                    calllimit: data.calllimit ?? 0,
-                    ringfalse: data.ringfalse ?? 0,
-                    record_call: data.record_call ?? 0,
-                    voicemail: data.voicemail ?? 0,
-                    dial_timeout: data.dial_timeout ?? 60,
-                    techprefix: data.techprefix ?? 0,
-                    amd: data.amd ?? 0,
-                    id_trunk_group: data.id_trunk_group ?? 0,
-                    videosupport: data.videosupport ?? "no",
+                    module: module, // Obrigatório, defualt
+                    action: action, // Obrigatório, defualt
+                    id: 0,          // Obrigatório, defualt
+                    id_user: data.id_user ?? await this.clients.users.fGetId(data.filtro), // Obrigatório, input
+                    defaultuser: data.defaultuser, // Obrigatório, input
+                    secret: data.secret,           // Obrigatório, input
+                    name: data.name ?? '',         // Obrigatório, default
+                    callerid: data.callerid ?? '', // Obrigatório, default
+                    ...this.opcional('directmedia', data.directmedia),
+                    ...this.opcional('context', data.context),
+                    ...this.opcional('dtmfmode', data.dtmfmode),
+                    ...this.opcional('host', data.host),
+                    ...this.opcional('insecure', data.insecure),
+                    ...this.opcional('nat', data.nat),
+                    ...this.opcional('qualify', data.qualify),
+                    ...this.opcional('type', data.type),
+                    ...this.opcional('disallow', data.disallow),
+                    ...this.opcional('allow', data.allow),
+                    ...this.opcional('regseconds', data.regseconds),
+                    ...this.opcional('allowtransfer', data.allowtransfer),
+                    ...this.opcional('calllimit', data.calllimit),
+                    ...this.opcional('ringfalse', data.ringfalse),
+                    ...this.opcional('record_call', data.record_call),
+                    ...this.opcional('voicemail', data.voicemail),
+                    ...this.opcional('dial_timeout', data.dial_timeout),
+                    ...this.opcional('techprefix', data.techprefix),
+                    ...this.opcional('amd', data.amd),
+                    ...this.opcional('id_trunk_group', data.id_trunk_group),
+                    ...this.opcional('videosupport', data.videosupport),
                     ...this.opcional('voicemail_password', data.voicemail_password),
                     ...this.opcional('id_user', data.id_user),
                     ...this.opcional('name', data.name),
@@ -573,7 +586,7 @@ class MagnusBilling {
                     ...this.opcional('amaflags', data.amaflags),
                     ...this.opcional('callgroup', data.callgroup),
                     ...this.opcional('callerid', data.callerid),
-                    ...this.opcional('DEFAULTip', data.DEFAULTip),
+                    ...this.opcional('DEFAULTip', data.defaultip),
                     ...this.opcional('fromuser', data.fromuser),
                     ...this.opcional('fromdomain', data.fromdomain),
                     ...this.opcional('sip_group', data.sip_group),
@@ -620,7 +633,8 @@ class MagnusBilling {
                     ...this.opcional('sip_config', data.sip_config),
                     ...this.opcional('sipshowpeer', data.sipshowpeer)
                 };
-                return await this.query(payload);
+
+                if (!data.dry) { return await this.query(payload) } else { return 'Dry finished' }
             },
         }
     };
