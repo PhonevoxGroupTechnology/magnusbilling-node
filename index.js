@@ -1,6 +1,9 @@
 const axios = require('axios');
 
-const { InvalidOperator, Denied, ValidatingError, FindError, ExpectedArgumentMisuse, ExpectedArgumentMissingArg, ExpectedArgumentTooManyArguments } = require('./lib/Errors')
+// Importante:
+// "/var/www/html/mbilling/protected/controllers/DidController.php +462" > adicionar um "s" no "$value[id]"
+
+const { InvalidOperator, Denied, ValidatingError, FindError, ExpectedArgumentMisuse, ExpectedArgumentMissingArg, ExpectedArgumentTooManyArguments, ExpectedArgumentArgumentNotAllowed } = require('./lib/Errors')
 
 class MagnusBilling {
     constructor(api_key, api_secret, public_url) {
@@ -129,10 +132,12 @@ class MagnusBilling {
             'Sign': sign
         };
 
-        console.log(`Sending request to ${this.public_url}/index.php/${module}/${action}`)
-        console.log(`Data: ${JSON.stringify(post_data)}`)
-        console.log(`Headers: ${JSON.stringify(headers)}`)
-        console.log(`Request: ${JSON.stringify(req)}`)
+        console.log(`[${module}/${action}] Sent: ${JSON.stringify(req)}`)
+
+        // console.log(`Sending request to ${this.public_url}/index.php/${module}/${action}`)
+        // console.log(`Data: ${JSON.stringify(post_data)}`)
+        // console.log(`Headers: ${JSON.stringify(headers)}`)
+        // console.log(`Request: ${JSON.stringify(req)}`)
 
         try {
             const response = await axios.post(`${this.public_url}/index.php/${module}/${action}`, post_data, {
@@ -142,11 +147,11 @@ class MagnusBilling {
                 }
             });
 
-            console.log(`Response: ${JSON.stringify(response.data)}`)
+            console.log(`[${module}/${action}] Response: ${JSON.stringify(response.data)}`)
             return response.data;
         } catch (error) {
-            console.log(error)
-            console.log(`[${error.status}/${error.code}] --> ${error.config.method}:${error.config.url} [${error.config.data}]`)
+            console.log(`[${module}/${action}] ${JSON.stringify(error)}`)
+            console.log(`[${module}/${action}] [${error.status}/${error.code}] --> ${error.config.method}:${error.config.url} [${error.config.data}]`)
             // throw new Error(`Axios error: ${error.message}`).stack;
             throw new Error(error).stack
         }
@@ -334,6 +339,11 @@ class MagnusBilling {
             // if (!(expectedArgs.some(arg => arg in data) ^ expectedArgs.every(arg => arg in data))) {
             //     throw new ExpectedArgumentTooManyArguments(`Apenas um dos argumentos é necessário: ${expectedArgs.join(', ')}`).stack;
             // }
+        } else if (condition === "NOR") {
+            const forbiddenArgs = expectedArgs.filter(arg => arg in data);
+            if (forbiddenArgs.length > 0) {
+                throw new ExpectedArgumentArgumentNotAllowed(`Argumentos não permitidos: ${forbiddenArgs.join(', ')}`).stack;
+            }
         } else {
             throw new ExpectedArgumentMisuse(`Condição inválida: ${condition}. Condição precisa ser "AND" ou "OR".`).stack;
         }
@@ -704,8 +714,8 @@ class MagnusBilling {
     }
 
     dids = { // TO-DO
-        dids: { // IN PROGRESS
-            new: async (data) => { // base
+        dids: { // DONE
+            new: async (data) => {
                 // base
                 let module = 'did'
                 let action = 'save'
@@ -768,7 +778,7 @@ class MagnusBilling {
                 if (!data.dry) { return await this.query(payload) } else { return 'Dry finished' }
 
             },
-            edit: async (data) => { // precisa do fGetId
+            edit: async (data) => {
                 this._ExpectedArgs(data, ['id', 'filtro'], "XOR")
                 data.id = data.filtro ? await this.dids.dids.fGetId(data.filtro) : data.id;
 
@@ -827,11 +837,9 @@ class MagnusBilling {
 
                 return await this.query(payload)
             },
-            delete: async (data) => { // precisa do fGetId
+            delete: async (data) => {
                 this._ExpectedArgs(data, ['id', 'filtro'], "XOR")
                 data.id = data.filtro ? await this.dids.dids.fGetId(data.filtro) : data.id;
-
-                console.log('DELETE DID ------> id: ' + data.id)
 
                 let module = 'did';
                 return await this.query({
@@ -841,7 +849,7 @@ class MagnusBilling {
                     id_user: '0',
                 });
             },
-            find: async (filters) => { // isso também está funcionando!
+            find: async (filters) => {
                 let module = 'did'
                 this.interpretFilters(filters);
                 let r = await this.read(module);
@@ -849,7 +857,7 @@ class MagnusBilling {
                 this.clearFilter()
                 return r
             },
-            fGetId: async (filters) => { // isso está funcionando!
+            fGetId: async (filters) => {
                 try {
                     const ret = await this.dids.dids.find(filters);
                     this.validateReturn(ret);
@@ -868,7 +876,218 @@ class MagnusBilling {
         },
         didDestination: { // TO-DO
             new: async (data) => {
-                // Lógica para adicionar destino de DID
+                let module = 'diddestination'
+                let action = 'save'
+
+                this._ExpectedArgs(data, ['id_user','id_did', 'type'], "AND") // Obrigatórios
+
+                switch (data.type.toLowerCase()) {
+                    case 'call_to_pstn':
+                    case 'pstn':
+                        this._ExpectedArgs(data, ['destination'], "AND") // obrigatório
+                        this._ExpectedArgs(data, ['id_sip', 'context', 'id_ivr', 'id_queue', 'context'], "NOR") // não pode
+                        data.voip_call = 0 // Isso é necessário para setar o tipo para PSTN.
+                        break;
+                    case 'sip':
+                        //
+                        this._ExpectedArgs(data, ['id_sip'], "AND")    // obrigatório
+                        this._ExpectedArgs(data, ['voip_call', 'destination', 'context', 'id_ivr', 'id_queue', 'context'], "NOR") // não pode
+                        data.voip_call = 1
+                        break;
+                    case 'ivr':
+                        //
+                        this._ExpectedArgs(data, ['id_ivr'], "AND")
+                        this._ExpectedArgs(data, ['voip_call', 'destination', 'id_sip', 'context', 'id_queue', 'context'], "NOR") // não pode
+                        data.voip_call = 2
+                        break;
+                    case 'callingcard':
+                        throw new Error('Esse tipo ainda não está implementado! :)')
+                        data.voip_call = 3
+                        break;
+                    case 'direct_extension':
+                        throw new Error('Esse tipo ainda não está implementado! :)')
+                        data.voip_call = 4
+                        break;
+                    case 'cid_callback':
+                        throw new Error('Esse tipo ainda não está implementado! :)')
+                        data.voip_call = 5
+                        break;
+                    case '0800_callback':
+                        throw new Error('Esse tipo ainda não está implementado! :)')
+                        data.voip_call = 6
+                        break;
+                    case 'queue':
+                        //
+                        this._ExpectedArgs(data, ['id_queue'], "AND") // obrigatório
+                        this._ExpectedArgs(data, ['voip_call', 'destination', 'id_sip', 'context', 'id_ivr', 'context'], "NOR") // não pode
+                        data.voip_call = 7
+                        break;
+                    case 'sip_group':
+                        throw new Error('Esse tipo ainda não está implementado! :)')
+                        data.voip_call = 8
+                        break;
+                    case 'custom':
+                        throw new Error('Esse tipo ainda não está implementado! :)')
+                        data.voip_call = 9
+                        break;
+                    case 'context':
+                        this._ExpectedArgs(data, ['context'], "AND")
+                        this._ExpectedArgs(data, ['voip_call', 'destination', 'id_sip', 'id_ivr', 'id_queue'], "NOR") // não pode
+                        data.voip_call = 10
+                        break;
+                    case 'multiple_ips':
+                        this._ExpectedArgs(data, ['id_sip'], "AND")    // obrigatório
+                        this._ExpectedArgs(data, ['voip_call', 'destination', 'context', 'id_ivr', 'id_queue', 'context'], "NOR") // não pode
+                        data.voip_call = 11
+                        break;
+                    default:
+                        break;
+                }
+
+                // Utilizam destination:
+                // Type: PSTN (voip_call:1)
+                // Type: SIP group (?)
+                // Type: Custom (?)
+                // Type: Multiple IPs (?)
+
+                let payload = {
+                    module: module,                             // Obrigatório
+                    action: action,                             // Obrigatório
+                    id: data.id ?? 0,                           // Obrigatório, 0 para criação, um ID específico para edição.
+                    id_did: data.id_did,                        // Obrigatório, input
+                    id_user: data.id_user,                      // Obrigatório, input 
+                    destination: data.destination ?? "",        // Obrigatóriamente vazio, pode alterar dependendo do Tipo
+                    voip_call: data.voip_call ?? 1,             // Dependente do Tipo
+                    priority: data.priority ?? 1,               // Default
+                    ...this.opcional("context", data.context),
+                    ...this.opcional("id_sip", data.id_sip),
+                    ...this.opcional("id_ivr", data.id_ivr),
+                }
+
+                if (!data.dry) { return await this.query(payload) } else { return 'Dry finished' }
+
+            },
+            edit: async (data) => {
+                this._ExpectedArgs(data, ['id', 'filtro'], "XOR")
+                data.id = data.filtro ? await this.dids.didDestination.fGetId(data.filtro) : data.id;
+
+                let module = 'diddestination';
+                let action = 'save';
+
+                
+                switch (data.type.toLowerCase()) {
+                    case 'call_to_pstn':
+                    case 'pstn':
+                        this._ExpectedArgs(data, ['destination'], "AND") // obrigatório
+                        this._ExpectedArgs(data, ['id_sip', 'context', 'id_ivr', 'id_queue', 'context'], "NOR") // não pode
+                        data.voip_call = 0 // Isso é necessário para setar o tipo para PSTN.
+                        break;
+                    case 'sip':
+                        //
+                        this._ExpectedArgs(data, ['id_sip'], "AND")    // obrigatório
+                        this._ExpectedArgs(data, ['voip_call', 'destination', 'context', 'id_ivr', 'id_queue', 'context'], "NOR") // não pode
+                        data.voip_call = 1
+                        break;
+                    case 'ivr':
+                        //
+                        this._ExpectedArgs(data, ['id_ivr'], "AND")
+                        this._ExpectedArgs(data, ['voip_call', 'destination', 'id_sip', 'context', 'id_queue', 'context'], "NOR") // não pode
+                        data.voip_call = 2
+                        break;
+                    case 'callingcard':
+                        throw new Error('Esse tipo ainda não está implementado! :)')
+                        data.voip_call = 3
+                        break;
+                    case 'direct_extension':
+                        throw new Error('Esse tipo ainda não está implementado! :)')
+                        data.voip_call = 4
+                        break;
+                    case 'cid_callback':
+                        throw new Error('Esse tipo ainda não está implementado! :)')
+                        data.voip_call = 5
+                        break;
+                    case '0800_callback':
+                        throw new Error('Esse tipo ainda não está implementado! :)')
+                        data.voip_call = 6
+                        break;
+                    case 'queue':
+                        //
+                        this._ExpectedArgs(data, ['id_queue'], "AND") // obrigatório
+                        this._ExpectedArgs(data, ['voip_call', 'destination', 'id_sip', 'context', 'id_ivr', 'context'], "NOR") // não pode
+                        data.voip_call = 7
+                        break;
+                    case 'sip_group':
+                        throw new Error('Esse tipo ainda não está implementado! :)')
+                        data.voip_call = 8
+                        break;
+                    case 'custom':
+                        throw new Error('Esse tipo ainda não está implementado! :)')
+                        data.voip_call = 9
+                        break;
+                    case 'context':
+                        this._ExpectedArgs(data, ['context'], "AND")
+                        this._ExpectedArgs(data, ['voip_call', 'destination', 'id_sip', 'id_ivr', 'id_queue'], "NOR") // não pode
+                        data.voip_call = 10
+                        break;
+                    case 'multiple_ips':
+                        this._ExpectedArgs(data, ['id_sip'], "AND")    // obrigatório
+                        this._ExpectedArgs(data, ['voip_call', 'destination', 'context', 'id_ivr', 'id_queue', 'context'], "NOR") // não pode
+                        data.voip_call = 11
+                        break;
+                    default:
+                        break;
+                }
+
+                let payload = {
+                module: module,                                         // Obrigatório
+                    action: action,                                     // Obrigatório
+                    id: data.id, 
+                    ...this.opcional("id_did", data.id_did),
+                    ...this.opcional("id_user", data.id_user),
+                    ...this.opcional("destination", data.destination),
+                    ...this.opcional("voip_call", data.voip_call),
+                    ...this.opcional("priority", data.priority),
+                    ...this.opcional("context", data.context),
+                    ...this.opcional("id_sip", data.id_sip),
+                    ...this.opcional("id_ivr", data.id_ivr),
+                }
+
+                return await this.query(payload)
+            },
+            delete: async (data) => {
+                this._ExpectedArgs(data, ['id', 'filtro'], "XOR")
+                data.id = data.filtro ? await this.dids.didDestination.fGetId(data.filtro) : data.id;
+
+                let module = 'diddestination';
+                return await this.query({
+                    module: module,
+                    action: 'destroy',
+                    id: data.id,
+                });
+            },
+            find: async (filters) => {
+                let module = 'diddestination'
+                this.interpretFilters(filters);
+                let r = await this.read(module);
+
+                this.clearFilter()
+                return r
+            },
+            fGetId: async (filters) => {
+                try {
+                    const ret = await this.dids.didDestination.find(filters);
+                    this.validateReturn(ret);
+
+                    if (parseInt(ret.count) !== 1) {
+                        throw (`Filtro "${filters}": ${ret.count} resultados.`);
+                    } else {
+                        const didDestinations = ret.rows[0];
+                        console.log(`fGetId --> ${didDestinations.id}`);
+                        return didDestinations.id;
+                    }
+                } catch (err) {
+                    throw new FindError(`${err}`).stack;
+                }   
             }
         }
     };

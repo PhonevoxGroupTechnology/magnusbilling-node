@@ -9,64 +9,176 @@ const mb = new MagnusBilling(API_KEY, API_SECRET, MAGNUS_HOST);
 
 // Todas as informações neste arquivo são apenas para utilizar-se como exemplos da api. Este arquivo também é utilizado como teste prático para novos desenvolvimentos.
 
+// DID Destination --------------------------------------------------------
+// 
+// Criar uma DID Destination
+//
+// mb.dids.didDestination.new({
+//     type: 'sip',
+//     id_did: '5',
+//     id_user: '2',
+//     id_sip: '1',
+// })
+//     .then(ret => {
+//         console.log(ret)
+//         console.log("\nmb.dids.didDestination.new ok")
+//     })
+//     .catch(error => {
+//         console.error(error)
+//         console.log("\nmb.dids.didDestination.new error")
+//     })
+// .finally(() => {
+//     console.log("\nmb.dids.didDestination.new finish")
+// })
+
+// Editar uma DID Destination
+//
+// mb.dids.didDestination.edit({
+//     filtro: [
+//         ['id_did', 'eq', '5']
+//     ],
+//     type: 'sip',
+//     id_user: 2,
+//     id_sip: 3
+// })
+//     .then(ret => {
+//         console.log(ret)
+//         console.log("\nmb.dids.didDestination.edit ok")
+//     })
+//     .catch(error => {
+//         console.error(error)
+//         console.log("\nmb.dids.didDestination.edit error")
+//     })
+// .finally(() => {
+//     console.log("\nmb.dids.didDestination.edit finish")
+// }) 
+
+
+// Delletar uma DID Destination
+//
+mb.dids.didDestination.delete({
+    filtro: [
+        ['id_did', 'eq', '5']
+    ]
+})
+    .then(ret => {
+        console.log(ret)
+        console.log("\nmb.dids.didDestination.delete ok")
+    })
+    .catch(error => {
+        console.error(error)
+        console.log("\nmb.dids.didDestination.delete error")
+    })
+.finally(() => {
+    console.log("\nmb.dids.didDestination.delete finish")
+}) 
+
+
+
+// Localizar uma DID Destination por filtro
+//
+// mb.dids.didDestination.find([
+//     ['id_did', 'eq', '5']
+// ])
+//     .then(ret => {
+//         console.log(ret)
+//         console.log("\nmb.dids.didDestination.find ok")
+//     })
+//     .catch(error => {
+//         console.error(error)
+//         console.log("\nmb.dids.didDestination.find error")
+//     })
+// .finally(() => {
+//     console.log("\nmb.dids.didDestination.find finish")
+// }) 
+
+// Obter o ID de uma DID Destination
+//
+// mb.dids.didDestination.fGetId([
+//     ['id_did', 'eq', '5']
+// ])
+//     .then(ret => {
+//         console.log(ret)
+//         console.log("\nmb.dids.didDestination.fGetId ok")
+//     })
+//     .catch(error => {
+//         console.error(error)
+//         console.log("\nmb.dids.didDestination.fGetId error")
+//     })
+// .finally(() => {
+//     console.log("\nmb.dids.didDestination.fGetId finish")
+// }) 
+
+
+
+
+
+
+
+
+
+
+
+
+
 // DIDS --------------------------------------------------------
 
 // // Criar um DID \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 //
 // mb.dids.dids.new({
-//     did: '5511111111',
+//     did: '551832568300',
 // })
 //     .then(ret => {
-//         console.log("")
 //         console.log(ret)
+//         console.log("\nmb.dids.dids.new ok")
 //     })
 //     .catch(error => {
-//         console.log("")
-//         // console.error(error)
+//         console.error(error)
+//         console.log("\nmb.dids.dids.new error")
 //     })
 // .finally(() => {
-//     console.log("\nDIDs new: done")
+//     console.log("\nmb.dids.dids.new finish")
 // })
 
 // // Editar um DID \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 //
 // mb.dids.dids.edit({
 //     filtro: [
-//         ['did', '=', '5511114444']
+//         ['did', '=', '5518991627865']
 //     ],
-//     description: 'alteracao sem promise chain',
+//     description: 'Teste de alteração de descrição via API',
 // })
 //     .then(ret => {
-//         console.log("")
 //         console.log(ret)
+//         console.log("\nmb.dids.dids.edit ok")
 //     })
 //     .catch(error => {
-//         console.log("")
 //         console.error(error)
+//         console.log("\nmb.dids.dids.edit error")
 //     })
 // .finally(() => {
-//     console.log("\nDIDs edit: done")
+//     console.log("\nmb.dids.dids.edit finish")
 // })
 // ------------- ou pode fazer com promise chain ------------------
 // mb.dids.dids.fGetId([
-//     ['did', '=', '5511114444']
+//     ['did', '=', '5518991627865']
 // ])
 // .then(did_id => {
 //     return mb.dids.dids.edit({
 //         id: did_id,
-//         description: 'alteracao com promise chain'
+//         description: 'Alterando a descrição do did 5518991627865 com promise chain'
 //     })
 // })
 // .then(ret => {
-//     console.log('Retorno DID EDIT: ')
 //     console.log(ret)
+//     console.log("\nmb.dids.dids.edit ok")
 // })
 //     .catch(error => {
-//         console.log("")
 //         console.error(error)
+//         console.log("\nmb.dids.dids.edit error")
 //     })
 // .finally(() => {
-//     console.log('finish!')
+//     console.log("\nmb.dids.dids.edit finish")
 // })
 
 // // Deletar um DID \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -74,74 +186,74 @@ const mb = new MagnusBilling(API_KEY, API_SECRET, MAGNUS_HOST);
 //
 // mb.dids.dids.delete({
 //     filtro: [
-//         ['did', '=', '1232221231'],
+//         ['did', '=', '5518991627865'],
 //     ]
 // })
 //     .then(ret => {
 //         console.log(ret)
+//         console.log("\nmb.dids.dids.delete ok")
 //     })
 //     .catch(error => {
-//         console.log("")
 //         console.error(error)
+//         console.log("\nmb.dids.dids.delete error")
 //     })
 // .finally(() => {
-//     console.log('finish!')
+//     console.log("\nmb.dids.dids.delete finish")
 // })
 // --------- ou fazer via promise-chain -------------
 // mb.dids.dids.fGetId([
-//     ['did', '=', '5511114444']
+//     ['did', '=', '5518991627865']
 // ])
 // .then(async did_id => {
-//     mb.clearFilter()
 //     return await mb.dids.dids.delete({
-//         id: parseInt(did_id)
+//         id: did_id
 //     })
 // })
 // .then(ret => {
-//     console.log('Retorno DID DELETE: ')
 //     console.log(ret)
+//     console.log("\nmb.dids.dids.delete ok")
 // })
 // .catch(err => {
-//     console.log('Retorno ERRO: DID DELETE: ')
 //     console.error(err)
+//     console.log("\nmb.dids.dids.delete error")
 // })
 // .finally(() => {
-//     console.log("\nfinish did delete!")
+//     console.log("\nmb.dids.dids.delete finish")
 // })
 
 
 // // Localizar um DID \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 //
 // mb.dids.dids.find([
-//     ['did', 'eq', '5511111111']
+//     ['did', 'eq', '5518991627865']
 // ])
 //     .then(ret => {
-//         console.log("")
 //         console.log(ret)
+//         console.log("\nmb.dids.dids.find ok")
 //     })
 //     .catch(error => {
-//         console.log("")
-//         // console.error(error)
+//         console.error(error)
+//         console.log("\nmb.dids.dids.find error")
 //     })
 // .finally(() => {
-//     console.log("\nDIDs edit: done")
+//     console.log("\nmb.dids.dids.find finish")
 // })
 
-// // Obter o ID de um did baseado em filtro \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+// // Obter o ID de um DID \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 //
 // mb.dids.dids.fGetId([
-//     ['did', 'eq', '5511111111']
+//     ['did', 'eq', '5518991627865']
 // ])
 //     .then(ret => {
-//         console.log("")
 //         console.log(ret)
+//         console.log("\nmb.dids.dids.fGetId ok")
 //     })
 //     .catch(error => {
-//         console.log("")
-//         // console.error(error)
+//         console.error(error)
+//         console.log("\nmb.dids.dids.fGetId error")
 //     })
 // .finally(() => {
-//     console.log("\nDIDs edit: done")
+//     console.log("\nmb.dids.dids.fGetId finish")
 // })
 
 // CONTAS SIPS --------------------------------------------------------
@@ -173,8 +285,7 @@ const mb = new MagnusBilling(API_KEY, API_SECRET, MAGNUS_HOST);
 // // Localizar uma conta SIP utilizando filtro pra pegar o ID \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 // 
 // mb.clients.sipUsers.find([
-//     ['id_user', '=', '8'],
-//     ['secret', '=', 'batatafrita']
+//     ['name', '=', '1111'],
 // ])
 //     .then(ret => {
 //         console.log(ret)
@@ -270,7 +381,7 @@ const mb = new MagnusBilling(API_KEY, API_SECRET, MAGNUS_HOST);
 // Localizar um usuário usando filtros \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 // mb.clients.users.find([
-//     ['usuario', '=', 'adrian-test'],
+//     ['id', '=', '8'],
 // ])
 //     .then (ret => {
 //         console.log(ret)
