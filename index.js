@@ -3,7 +3,8 @@ const axios = require('axios');
 // Importante:
 // "/var/www/html/mbilling/protected/controllers/DidController.php +462" > adicionar um "s" no "$value[id]"
 
-const { InvalidOperator, Denied, ValidatingError, FindError, ExpectedArgumentMisuse, ExpectedArgumentMissingArg, ExpectedArgumentTooManyArguments, ExpectedArgumentArgumentNotAllowed } = require('./lib/Errors')
+const { isFloat } = require('./lib/Utils');
+const { InvalidOperator, Denied, ValidatingError, FindError, ExpectedArgumentMisuse, ExpectedArgumentMissingArg, ExpectedArgumentTooManyArguments, ExpectedArgumentArgumentNotAllowed } = require('./lib/Errors');
 
 class MagnusBilling {
     constructor(api_key, api_secret, public_url) {
@@ -324,6 +325,11 @@ class MagnusBilling {
             if (missingArgs.length > 0) {
                 throw new ExpectedArgumentMissingArg(`Argumentos faltantes: ${missingArgs.join(', ')}`).stack;
             }
+        } else if (condition === "NAND") {
+            const presentArgsCount = expectedArgs.filter(arg => arg in data).length;
+            if (presentArgsCount === expectedArgs.length) {
+                throw new ExpectedArgumentTooManyArguments(`Conflito de argumentos: ${expectedArgs.join(', ')}`).stack;
+            }
         } else if (condition === "OR") {
             if (!expectedArgs.some(arg => arg in data)) {
                 throw new ExpectedArgumentMissingArg(`Argumentos necessários: ${expectedArgs.join(', ')}`).stack;
@@ -336,9 +342,6 @@ class MagnusBilling {
             if (!(presentArgsCount === 1)) {
                 throw new ExpectedArgumentTooManyArguments(`Apenas um dos argumentos é necessário: ${expectedArgs.join(', ')}`).stack;
             }
-            // if (!(expectedArgs.some(arg => arg in data) ^ expectedArgs.every(arg => arg in data))) {
-            //     throw new ExpectedArgumentTooManyArguments(`Apenas um dos argumentos é necessário: ${expectedArgs.join(', ')}`).stack;
-            // }
         } else if (condition === "NOR") {
             const forbiddenArgs = expectedArgs.filter(arg => arg in data);
             if (forbiddenArgs.length > 0) {
@@ -414,8 +417,8 @@ class MagnusBilling {
                  * @returns {Promise} - Uma Promise que resolve com o resultado da exclusão do usuário.
                  * @throws {Error} - Se ambos id e filtro forem fornecidos, ou se nenhum deles for fornecido.
                 */
-                this._ExpectedArgs(data, ['id', 'filtro'], "XOR");
-                data.id = data.filtro ? await this.clients.users.fGetId(data.filtro) : data.id; // Se passou filtro, uso. Se não, uso ID. Garanto que não tem ambos através do ExpectedArgs:XOR
+                this._ExpectedArgs(data, ['id', 'id_filtro'], "XOR");
+                data.id = data.id_filtro ? await this.clients.users.fGetId(data.id_filtro) : data.id; // Se passou filtro, uso. Se não, uso ID. Garanto que não tem ambos através do ExpectedArgs:XOR
 
                 let module = 'user';
                 return await this.destroy(module, data.id); // Lembrando, o ID esperado aqui é o ID interno, e não o número do usuario!
@@ -437,13 +440,14 @@ class MagnusBilling {
                  * @returns {Promise} - Uma Promise que resolve com o resultado da edição do usuário.
                  * @throws {Error} - Se ambos id e filtro forem fornecidos, ou se nenhum deles for fornecido.
                 */
-                this._ExpectedArgs(data, ['id', 'filtro'], "XOR");
-                data.id = data.filtro ? await this.clients.users.fGetId(data.filtro) : data.id; // Se passou filtro, uso. Se não, uso ID. Garanto que não tem ambos através do ExpectedArgs:XOR
+                this._ExpectedArgs(data, ['id', 'id_filtro'], "XOR");
+                data.id = data.id_filtro ? await this.clients.users.fGetId(data.id_filtro) : data.id; // Se passou filtro, uso. Se não, uso ID. Garanto que não tem ambos através do ExpectedArgs:XOR
 
                 let module = 'user';
+                let action = 'save';
                 let payload = {
                     module: module,
-                    action: 'save',
+                    action: action,
                     id: data.id,
                     ...this.opcional('username', data.usuario), // Opcional
                     ...this.opcional('password', data.senha), // Opcional
@@ -481,17 +485,16 @@ class MagnusBilling {
         },
         sipUsers: { // DONE
             new: async (data) => {
+                this._ExpectedArgs(data, ['defaultuser', 'secret'], "AND")
+                this._ExpectedArgs(data, ['id_user', 'id_user_filtro'], "XOR")
+
                 let module = 'sip'
                 let action = 'save'
-
-                this._ExpectedArgs(data, ['defaultuser', 'secret'], "AND")
-                this._ExpectedArgs(data, ['filtro', 'id_user'], "XOR")
-
                 let payload = {
                     module: module, // Obrigatório
                     action: action, // Obrigatório
                     id: 0,          // Obrigatório
-                    id_user: data.id_user ?? await this.clients.users.fGetId(data.id_user_filtro), // Obrigatório, input
+                    id_user: data.id_user_filtro ? await this.clients.users.fGetId(data.id_user_filtro) : data.id_user, // Obrigatório, input
                     defaultuser: data.defaultuser,              // Obrigatório, input
                     secret: data.secret,                        // Obrigatório, input
                     name: data.name ?? '',                      // Obrigatório
@@ -576,15 +579,16 @@ class MagnusBilling {
                 if (!data.dry) { return await this.query(payload) } else { return 'Dry finished' }
             },
             edit: async (data) => {
-                this._ExpectedArgs(data, ['id', 'filtro'], "XOR");
-                data.id = data.filtro ? await this.clients.sipUsers.fGetId(data.filtro) : data.id;
+                this._ExpectedArgs(data, ['id', 'id_filtro'], "XOR");
+                data.id = data.id_filtro ? await this.clients.sipUsers.fGetId(data.id_filtro) : data.id;
 
                 let module = 'sip';
+                let action = 'save';
                 let payload = {
                     module: module,
-                    action: 'save',
+                    action: action,
                     id: data.id,
-                    ...this.opcional('id_user', data.id_user ?? await this.clients.users.fGetId(data.id_user_filtro)),
+                    ...this.opcional("id_user", data.id_user_filtro ? await this.clients.users.fGetId(data.id_user_filtro) : data.id_user),
                     ...this.opcional('defaultuser', data.defaultuser),
                     ...this.opcional('secret', data.secret),
                     ...this.opcional('name', data.name),
@@ -672,8 +676,8 @@ class MagnusBilling {
                 return await this.query(payload)
             },
             delete: async (data) => {
-                this._ExpectedArgs(data, ['id', 'filtro'], "XOR")
-                data.id = data.filtro ? await this.clients.sipUsers.fGetId(data.filtro) : data.id;
+                this._ExpectedArgs(data, ['id', 'id_filtro'], "XOR")
+                data.id = data.id_filtro ? await this.clients.sipUsers.fGetId(data.id_filtro) : data.id;
 
                 let module = 'sip';
                 return await this.destroy(module, data.id)
@@ -707,13 +711,91 @@ class MagnusBilling {
 
     billing = { // TO-DO
         refills: { // TO-DO
-            new: async (data) => {
-                // Adicionar recarga
+            new: async (data) => { // DONE
+                this._ExpectedArgs(data, ['credit'], "AND")
+                this._ExpectedArgs(data, ['id_user', 'id_user_filtro'], "XOR")
+
+                if (!isFloat(data.credit)) { throw new Error('O tipo de "credit" precisa ser um valor de ponto flutuante (float)!')}
+
+                if (!data.id) { data.description = "Recharge via API" } // Mensagem padrão na criação de um refill
+
+                let module = 'refill'
+                let action = 'save'
+                let payload = {
+                    module: module,
+                    action: action,
+                    id: data.id ?? 0, // 0 para a criação de um novo 
+                    payment: data.payment ?? 1, // geralmente isso aqui nao muda, somente pra controle interno
+                    ...this.opcional("id_user", data.id_user_filtro ? await this.clients.users.fGetId(data.id_user_filtro) : data.id_user), // Quem receberá a recarga
+                    credit: data.credit, // Precisa ser um float. Talvez funcione com string formatada igual um float
+                    ...this.opcional("date", data.date), // YYYY-MM-DD HH-mm-SS, automaticamente preenchido se ausente
+                    ...this.opcional("description", data.description),
+                    ...this.opcional("invoice_number", data.invoice_number), // Não sei
+                    ...this.opcional("image", data.image) // Comprovante de pagamento
+                }
+
+                if (!data.dry) { return await this.query(payload) } else { return 'Dry finished' }
+
+            },
+            edit: async (data) => { // DONE
+                this._ExpectedArgs(data, ['id', 'id_filtro'], "XOR");
+                data.id = data.id_filtro ? await this.billing.refills.fGetId(data.id_filtro) : data.id;
+
+                if (data.credit && !isFloat(data.credit)) { throw new Error('O tipo de "credit" precisa ser um valor de ponto flutuante (float)!') }
+
+                let module = 'refill';
+                let action = 'save';
+                let payload = {
+                    module: module,
+                    action: action,
+                    id: data.id,
+                    ...this.opcional("id_user", data.id_user_filtro ? await this.clients.users.fGetId(data.id_user_filtro) : data.id_user),
+                    ...this.opcional("credit", data.credit),
+                    ...this.opcional("payment", data.payment),
+                    ...this.opcional("date", data.date), // YYYY-MM-DD HH-mm-SS, automaticamente preenchido se ausente
+                    ...this.opcional("description", data.description),
+                    ...this.opcional("invoice_number", data.invoice_number), // Não sei
+                    ...this.opcional("image", data.image) // Comprovante de pagamento
+                }
+
+                if (!data.dry) { return await this.query(payload) } else { return 'Dry finished' }
+                //
+            },
+            delete: async (data) => {
+                this._ExpectedArgs(data, ['id', 'id_filtro'], "XOR");
+                data.id = data.id_filtro ? await this.billing.refills.fGetId(data.id_filtro) : data.id; // Se passou filtro, uso. Se não, uso ID. Garanto que não tem ambos através do ExpectedArgs:XOR
+
+                let module = 'refill';
+                return await this.destroy(module, data.id); // Lembrando, o ID esperado aqui é o ID interno, e não o número do usuario!
+            },
+            find: async (filters) => { // DONE
+                let module = 'refill';
+                this.interpretFilters(filters);
+                let r = await this.read(module);
+
+                this.clearFilter()
+                return r
+            },
+            fGetId: async (filters) => { // DONE
+                try {
+                    const ret = await this.billing.refills.find(filters);
+                    this.validateReturn(ret);
+
+                    if (parseInt(ret.count) !== 1) {
+                        throw (`Filtro "${filters}": ${ret.count} resultados.`);
+                    } else {
+                        const refill = ret.rows[0];
+                        console.log(`fGetId --> ${refill.id}`);
+                        return refill.id;
+                    }
+                } catch (err) {
+                    throw new FindError(`${err}`).stack;
+                }
             }
         }
     }
 
-    dids = { // TO-DO
+    dids = { // DONE
         dids: { // DONE
             new: async (data) => {
                 // base
@@ -721,13 +803,14 @@ class MagnusBilling {
                 let action = 'save'
 
                 this._ExpectedArgs(data, ['did'], "AND");
+                this._ExpectedArgs(data, ['id_user', 'id_user_filtro'], "NAND");
 
                 let payload = {
                     module: module, // Obrigatório
                     action: action, // Obrigatório
                     id: 0,          // Obrigatório
                     did: data.did,  // Obrigatório, input
-                    id_user: data.id_user ?? 0, 
+                    id_user: data.id_user ?? await this.clients.users.fGetId(data.id_user_filtro) ?? 0, 
                     ...this.opcional("country", data.country),
                     ...this.opcional("record_call", data.record_call),
                     ...this.opcional("activated", data.activated),
@@ -779,13 +862,14 @@ class MagnusBilling {
 
             },
             edit: async (data) => {
-                this._ExpectedArgs(data, ['id', 'filtro'], "XOR")
-                data.id = data.filtro ? await this.dids.dids.fGetId(data.filtro) : data.id;
+                this._ExpectedArgs(data, ['id', 'id_filtro'], "XOR")
+                data.id = data.id_filtro ? await this.dids.dids.fGetId(data.id_filtro) : data.id;
 
                 let module = 'did';
+                let action = 'save';
                 let payload = {
                     module: module,
-                    action: 'save',
+                    action: action,
                     id: data.id,
                     ...this.opcional('did', data.did),
                     ...this.opcional("country", data.country),
@@ -835,19 +919,22 @@ class MagnusBilling {
                     ...this.opcional("noworkaudio", data.noworkaudio),
                 }
 
-                return await this.query(payload)
+                if (!data.dry) { return await this.query(payload) } else { return 'Dry finished' }
             },
             delete: async (data) => {
-                this._ExpectedArgs(data, ['id', 'filtro'], "XOR")
-                data.id = data.filtro ? await this.dids.dids.fGetId(data.filtro) : data.id;
+                this._ExpectedArgs(data, ['id', 'id_filtro'], "XOR")
+                data.id = data.id_filtro ? await this.dids.dids.fGetId(data.id_filtro) : data.id;
 
                 let module = 'did';
-                return await this.query({
+                let action = 'destroy';
+                let payload = {
                     module: module,
-                    action: 'destroy',
+                    action: action,
                     id: data.id,
                     id_user: '0',
-                });
+                }
+                
+                if (!data.dry) { return await this.query(payload) } else { return 'Dry finished' }
             },
             find: async (filters) => {
                 let module = 'did'
@@ -874,12 +961,11 @@ class MagnusBilling {
                 }                
             }
         },
-        didDestination: { // TO-DO
+        didDestination: { // DONE
             new: async (data) => {
-                let module = 'diddestination'
-                let action = 'save'
-
-                this._ExpectedArgs(data, ['id_user','id_did', 'type'], "AND") // Obrigatórios
+                this._ExpectedArgs(data, ["type"], "AND")
+                this._ExpectedArgs(data, ["id_user", "id_user_filtro"], "XOR")
+                this._ExpectedArgs(data, ["id_did", "id_did_filtro"], "XOR")
 
                 switch (data.type.toLowerCase()) {
                     case 'call_to_pstn':
@@ -944,18 +1030,15 @@ class MagnusBilling {
                         break;
                 }
 
-                // Utilizam destination:
-                // Type: PSTN (voip_call:1)
-                // Type: SIP group (?)
-                // Type: Custom (?)
-                // Type: Multiple IPs (?)
+                let module = 'diddestination'
+                let action = 'save'
 
                 let payload = {
                     module: module,                             // Obrigatório
                     action: action,                             // Obrigatório
                     id: data.id ?? 0,                           // Obrigatório, 0 para criação, um ID específico para edição.
-                    id_did: data.id_did,                        // Obrigatório, input
-                    id_user: data.id_user,                      // Obrigatório, input 
+                    id_did : data.id_did_filtro ? await this.dids.dids.fGetId(data.id_did_filtro) : data.id_did, // Obrigatório, input
+                    id_user: data.id_user_filtro ? await this.clients.users.fGetId(data.id_user_filtro) : data.id_user, // Obrigatório, input 
                     destination: data.destination ?? "",        // Obrigatóriamente vazio, pode alterar dependendo do Tipo
                     voip_call: data.voip_call ?? 1,             // Dependente do Tipo
                     priority: data.priority ?? 1,               // Default
@@ -968,12 +1051,10 @@ class MagnusBilling {
 
             },
             edit: async (data) => {
-                this._ExpectedArgs(data, ['id', 'filtro'], "XOR")
-                data.id = data.filtro ? await this.dids.didDestination.fGetId(data.filtro) : data.id;
-
-                let module = 'diddestination';
-                let action = 'save';
-
+                this._ExpectedArgs(data, ['id', 'id_filtro'], "XOR") // Obrigatório
+                this._ExpectedArgs(data, ["id_user", "id_user_filtro"], "NAND") // Opcional, mas não ambos
+                this._ExpectedArgs(data, ["id_did", "id_did_filtro"], "NAND") // Opcional, mas não ambos
+                data.id = data.id_filtro ? await this.dids.didDestination.fGetId(data.id_filtro) : data.id;
                 
                 switch (data.type.toLowerCase()) {
                     case 'call_to_pstn':
@@ -1038,12 +1119,14 @@ class MagnusBilling {
                         break;
                 }
 
+                let module = 'diddestination';
+                let action = 'save';
                 let payload = {
                 module: module,                                         // Obrigatório
                     action: action,                                     // Obrigatório
                     id: data.id, 
-                    ...this.opcional("id_did", data.id_did),
-                    ...this.opcional("id_user", data.id_user),
+                    ...this.opcional("id_did", data.id_did_filtro ? await this.dids.dids.fGetId(data.id_did_filtro) : data.id_did), // Obrigatório, input
+                    ...this.opcional("id_user", data.id_user_filtro ? await this.clients.users.fGetId(data.id_user_filtro) : data.id_user), // Obrigatório, input 
                     ...this.opcional("destination", data.destination),
                     ...this.opcional("voip_call", data.voip_call),
                     ...this.opcional("priority", data.priority),
@@ -1059,9 +1142,10 @@ class MagnusBilling {
                 data.id = data.filtro ? await this.dids.didDestination.fGetId(data.filtro) : data.id;
 
                 let module = 'diddestination';
+                let action = 'destroy';
                 return await this.query({
                     module: module,
-                    action: 'destroy',
+                    action: action,
                     id: data.id,
                 });
             },
@@ -1095,17 +1179,53 @@ class MagnusBilling {
     rates = { // TO-DO
         plans: { // TO-DO
             new: async (data) => {
-                // Adicionar plano
+                //
+            },
+            edit: async (data) => {
+                //
+            },
+            delete: async (data) => {
+                //
+            },
+            find: async (filters) => {
+                //
+            },
+            fGetId: async (filters) => {
+                //
             }
         },
         tariffs: { // TO-DO
             new: async (data) => {
-                // Adicionar tarifa
+                //
+            },
+            edit: async (data) => {
+                //
+            },
+            delete: async (data) => {
+                //
+            },
+            find: async (filters) => {
+                //
+            },
+            fGetId: async (filters) => {
+                //
             }
         },
         prefixes: { // TO-DO
             new: async (data) => {
-                //Adicionar prefixo
+                //
+            },
+            edit: async (data) => {
+                //
+            },
+            delete: async (data) => {
+                //
+            },
+            find: async (filters) => {
+                //
+            },
+            fGetId: async (filters) => {
+                //
             }
         }
     }
@@ -1113,17 +1233,53 @@ class MagnusBilling {
     routes = { // TO-DO
         providers: { // TO-DO
             new: async (data) => {
-                // Adicionar provedor
+                //
+            },
+            edit: async (data) => {
+                //
+            },
+            delete: async (data) => {
+                //
+            },
+            find: async (filters) => {
+                //
+            },
+            fGetId: async (filters) => {
+                //
             }
         },
         trunks: { // TO-DO
             new: async (data) => {
-                // Adicionar tronco
+                //
+            },
+            edit: async (data) => {
+                //
+            },
+            delete: async (data) => {
+                //
+            },
+            find: async (filters) => {
+                //
+            },
+            fGetId: async (filters) => {
+                //
             }
         },
         trunkGroups: { // TO-DO
             new: async (data) => {
-                // Adicionar grupo de tronco
+                //
+            },
+            edit: async (data) => {
+                //
+            },
+            delete: async (data) => {
+                //
+            },
+            find: async (filters) => {
+                //
+            },
+            fGetId: async (filters) => {
+                //
             }
         }
     }
