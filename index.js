@@ -5,6 +5,8 @@ const axios = require('axios');
 
 const { isFloat } = require('./lib/Utils');
 const { InvalidOperator, Denied, ValidatingError, FindError, ExpectedArgumentMisuse, ExpectedArgumentMissingArg, ExpectedArgumentTooManyArguments, ExpectedArgumentArgumentNotAllowed } = require('./lib/Errors');
+const { isSet } = require('util/types');
+const { clear } = require('console');
 
 class MagnusBilling {
     constructor(api_key, api_secret, public_url) {
@@ -263,6 +265,215 @@ class MagnusBilling {
         }
     }
 
+// TESTNGIN!!!!!!!!!! ///////////////////////////////////////////////////////////////////////////////////
+
+    async createEndpoint (module, action, ArgumentObject) {
+        // endpoint = 'new'
+        // module   = 'user'
+        // action   = 'save'                | destroy: delete | save: new, edit | read: find, fGetId
+        // ArgumentObject = {
+        //     expects: [
+        //         {
+        //             args: ['usuario','senha','email'], logic: 'AND'
+        //         },
+        //         {
+        //             args: ['id_plan', 'id_plan_filtro'], logic: 'NAND'
+        //         },
+        //         {
+        //             args: ['id', 'createUser'], logic: '!OR' // espero que não tenha nenhum dessa lista, eu Expect (espero) que ! (não tenha) OR (qualquer um)
+        //         }
+        //     ],
+        //     payload: {
+        //         // Opcionais, ausentes caso não sejam informados
+        //         optional: ['prefix_local', 'firstname', 'lastname', 'id_plan', 'credit', 'calllimit'],
+        //         //...this.opcional('arg', data.arg),
+                
+        //         // Opcionais, com valores padrões caso não sejam informados
+        //         default: [
+        //             // {
+        //             //     arg: '',
+        //             //     comparator: '',
+        //             //     true: async (id_user_filtro) => {
+        //             //         return await this.clients.users.fGetId(id_user_filtro)
+        //             //     },
+        //             //     default: ''
+        //             // },
+        //             {
+        //                 arg: 'id_user',
+        //                 comparator: 'id_user_filtro',
+        //                 vTrue: async (id_user_filtro) => {
+        //                     return await this.clients.users.fGetId(id_user_filtro)
+        //                 },
+        //                 vDefault: '0'
+        //             }
+        //         ],
+        //         //...this.opcional('arg', comparator ? true : default),
+                
+        //         // Constantes, imutáveis
+        //         fixed: [
+        //             {
+        //                 arg: 'createUser',
+        //                 value: '1'
+        //             },
+        //             {
+        //                 arg: 'id',
+        //                 value: '0'
+        //             }
+        //         ]
+        //     }   
+        // }
+        return async (data) => {
+            // realizar os _ExpectArgs
+            ArgumentObject.expects.forEach(expectation => {
+                const { args, logic } = expectation;
+                this._ExpectedArgs(data, args, logic)
+            });
+
+            console.log('Data recebida: ')
+            console.log(data)
+
+            // adicionar argumentos fixos
+            // adicionar argumentos opcionais
+            // adicionar argumentos defaults
+            
+            let payload = {}
+
+            console.log('Payload pré-fixed')
+            console.log(payload)
+            // Adicionando a parte fixada da payload
+            ArgumentObject.payload.fixed.forEach(fixed => {
+                const { arg, value } = fixed;
+                payload[`${arg}`] = value;
+            });
+
+            console.log('Payload pré-optional')
+            console.log(payload)
+            //Adicionando a parte opcional da payload
+            ArgumentObject.payload.optional.forEach(optionalArg => {
+                // console.log('iterando pelos argumentos opcionais: ' + optionalArg)
+                if (data[`${optionalArg}`]) {
+                    payload[`${optionalArg}`] = data[`${optionalArg}`]
+                }
+            })
+
+
+
+            // Array pra armazenar a desgraça das promessas que PODEM existir como default (pra pesquisa de IDs)
+            const promises = [];
+            ArgumentObject.payload.default.forEach(defaultArg => {
+                const { arg, comparator, vTrue, vDefault  } = defaultArg;
+                console.log('iterando pelos argumentos defaults: ' + defaultArg)
+                console.log('arg        : ' + arg)
+                console.log('comparator : ' + comparator)
+                console.log('vTrue      : ' + vTrue)
+                console.log('vDefault   : ' + vDefault)
+                
+                if(data[`${comparator}`]) {
+                    let trueValue;
+                    if (typeof vTrue === 'function') {
+                        // Se vTrue for uma função, chamamos ela passando o valor de data[comparator]
+                        trueValue = vTrue(data[`${comparator}`]);
+                    } else {
+                        // Se não for uma função, usamos o valor diretamente
+                        trueValue = vTrue;
+                    }
+            
+                    // Adiciona a promise ao array de promessas se trueValue for uma promise
+                    if (trueValue instanceof Promise) {
+                        promises.push(
+                            trueValue
+                                .then(result => {
+                                    payload[`${arg}`] = result;
+                                })
+                                .catch(error => {
+                                    console.error(error);
+                                    // payload[`${arg}`] = vDefault;
+                                    throw new Error('Tua promise deu erro, não vou assumir nada não')
+                                })
+                        );
+                    } else {
+                        // Se não for uma promise, usamos o valor diretamente
+                        payload[`${arg}`] = trueValue;
+                    }
+                } else {
+                    // // Usamos o valor padrão diretamente se não precisarmos chamar a função vTrue
+                    // payload[`${arg}`] = vDefault;
+                    throw new Error('Tua promise deu erro, não vou assumir nada não')
+                }
+            });
+
+            await Promise.all(promises)
+                .then(() => {
+                    console.log('Payload gerada: ');
+                    console.log(payload);
+                })
+                .catch(error => {
+                    // Lidar com erros, se necessário
+                    console.error(error);
+                    throw new Error("eu odeio promises")
+                });
+            
+            return payload
+        }
+    }
+
+
+
+
+
+    test = {
+        teste: {
+            new: async (data) => {
+                const ArgumentObject = {
+                    expects: [
+                        {
+                            args: ['usuario','senha','email'], logic: 'AND'
+                        },
+                        {
+                            args: ['id_plan', 'id_plan_filtro'], logic: 'NAND'
+                        },
+                        {
+                            args: ['id', 'createUser'], logic: '!OR'
+                        }
+                    ],
+                    payload: {
+                        optional: ['prefix_local', 'firstname', 'lastname', 'id_plan', 'credit', 'calllimit'],
+                        default: [
+                            {
+                                arg: 'id_user', // #2 : Seto o argumento arg
+                                comparator: 'id_user_filtro', // #1 : Usando id_user_filtro (para conferir se é true/false)
+                                // vTrue: async (id_user_filtro) => {                               // #3 Pra isso, se for true
+                                //     return await this.clients.users.fGetId(id_user_filtro)
+                                // },
+                                vTrue: '5',
+                                vDefault: '0'                                                    // #4 Pra isso, se for false
+                            }
+                        ],                        
+                        fixed: [
+                            {
+                                arg: 'createUser',
+                                value: '1'
+                            },
+                            {
+                                arg: 'id',
+                                value: '0'
+                            }
+                        ]
+                    }   
+                };
+    
+                // Criando o endpoint 'new'
+                const endpoint = await this.createEndpoint('user', 'save', ArgumentObject);
+    
+                // Chamando o endpoint 'new' com os dados fornecidos
+                return await endpoint(data);
+            }
+        }
+    };
+
+
+// TESTNGIN!!!!!!!!!! ///////////////////////////////////////////////////////////////////////////////////
+
     clearFilter() {
         this.filter = [];
     }
@@ -283,6 +494,7 @@ class MagnusBilling {
 
     interpretFilters(filterList) {
         if (filterList !== undefined && filterList.length > 0) {
+            console.log('filter list:' + filterList)
             filterList.forEach(filtro => {
                 console.log(`Filtros recebidos: ${filtro}`);
                 let [campo, operador, valor, tipo] = filtro;
@@ -333,6 +545,10 @@ class MagnusBilling {
         } else if (condition === "OR") {
             if (!expectedArgs.some(arg => arg in data)) {
                 throw new ExpectedArgumentMissingArg(`Argumentos necessários: ${expectedArgs.join(', ')}`).stack;
+            }
+        } else if (condition === "!OR") { // funny moment
+            if (expectedArgs.some(arg => arg in data)) {
+                throw new ExpectedArgumentArgumentNotAllowed(`Argumentos não permitidos: ${expectedArgs.join(', ')}`).stack;
             }
         } else if (condition === "XOR") {
             const presentArgsCount = expectedArgs.filter(arg => arg in data).length;
@@ -709,8 +925,8 @@ class MagnusBilling {
         }
     };
 
-    billing = { // TO-DO
-        refills: { // TO-DO
+    billing = { // DONE
+        refills: { // DONE
             new: async (data) => { // DONE
                 this._ExpectedArgs(data, ['credit'], "AND")
                 this._ExpectedArgs(data, ['id_user', 'id_user_filtro'], "XOR")
@@ -1230,6 +1446,19 @@ class MagnusBilling {
         }
     }
 
+    reports = {
+        cdr: {
+            find: async (filters) => {
+                let module = 'call'
+                this.interpretFilters(filters);
+                let r = await this.read(module);
+
+                this.clearFilter()
+                return r
+            }
+        }
+    }
+
     routes = { // TO-DO
         providers: { // TO-DO
             new: async (data) => {
@@ -1289,3 +1518,6 @@ class MagnusBilling {
 module.exports = {
     MagnusBilling
 }
+
+// NOTE TO SELF: ~1500 linhas de código no modelo antigo
+// NOTE TO SELF: ~???? linhas de código com a implementação do createEndpoint (fazer)

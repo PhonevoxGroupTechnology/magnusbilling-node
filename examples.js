@@ -7,7 +7,83 @@ const mb = new MagnusBilling(API_KEY, API_SECRET, MAGNUS_HOST);
 // 2024/02/24 13:25:13 [error] [php] Undefined index: id (/var/www/html/mbilling/protected/components/ApiAccess.php:176)
 // Significa que falta o campo "id" na payload
 
-// Todas as informações neste arquivo são apenas para utilizar-se como exemplos da api. Este arquivo também é utilizado como teste prático para novos desenvolvimentos.
+// Todas as informações neste arquivo são apenas para utilizar-se como exemplos da api. Este arquivo também é utilizado como teste prático para novos ///desenvolvimentos.
+
+
+
+
+
+
+
+
+// test with endpoint maker
+// mb.test.teste.new({
+
+// })
+//     .then(ret => {
+//         console.log(ret)
+//         console.log("\nmb.test.teste.new ok")
+//     })
+//     .catch(error => {
+//         console.error(error)
+//         console.log("\nmb.test.teste.new error")
+//     })
+// .finally(() => {
+//     console.log("\nmb.test.teste.new finish")
+// })
+
+mb.test.teste.new({
+    usuario: 'wasd',
+    senha: 'dwadwa',
+    email: 'adrian@phonevox.com.br',
+    firstname: 'adrian',
+    credit: '10',
+    id_user_filtro: [
+        ['username', 'eq', 'root']
+    ]
+})
+    .then(ret => {
+        console.log('################################################################################')
+        console.log(ret);
+        console.log("\nmb.test.teste.new ok");
+    })
+    .catch(error => {
+        console.error(error);
+        console.log("\nmb.test.teste.new error");
+    })
+    .finally(() => {
+        console.log("\nmb.test.teste.new finish");
+    });
+
+
+
+
+
+
+
+
+// CDR  --------------------------------------------------------
+
+// Listar CDR \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+//
+// mb.reports.cdr.find([
+//     ['src', '~=', 'ALGAR']
+// ])
+//     .then(ret => {
+//         console.log(ret)
+//         console.log("\nmb.reports.cdr.find ok")
+//     })
+//     .catch(error => {
+//         console.error(error)
+//         console.log("\nmb.reports.cdr.find error")
+//     })
+// .finally(() => {
+//     console.log("\nmb.reports.cdr.find finish")
+// })
+
+
+
+
 
 
 // Refill  --------------------------------------------------------
@@ -559,7 +635,7 @@ const mb = new MagnusBilling(API_KEY, API_SECRET, MAGNUS_HOST);
 
 // GERAL DO SISTEMA ----------------------------------------------------------------
 
-// mb.getFields('sip')
+// mb.getFields('call')
 //     .then(ret => {
 //         console.log(ret)
 //     })
