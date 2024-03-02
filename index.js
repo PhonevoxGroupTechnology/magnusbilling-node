@@ -200,6 +200,7 @@ class MagnusBilling {
     }
 
     async buyDID(id_did, id_user) {
+        // ???? action:buy ?
         return await this.query({
             module: 'did',
             action: 'buy',
@@ -215,22 +216,6 @@ class MagnusBilling {
         });
     }
 
-    async createDID(data) {
-        /* 
-        data = {
-            "did": 
-        }
-        */
-        return await this.query(data)
-    }
-
-    async createUser(data) {
-        data.createUser = 1;
-        data.id = 0;
-
-        return await this.query(data);
-    }
-
     async getModules() {
         return await this.query({
             getModules: 1
@@ -244,25 +229,48 @@ class MagnusBilling {
         });
     }
 
-    async getId(module, field, value) {
-        this.setFilter(field, value, 'eq');
-
-        const query = await this.query({
-            module: module,
-            action: 'read',
-            page: 1,
-            start: 0,
-            limit: 1,
-            filter: JSON.stringify(this.filter)
-        });
-
-        this.clearFilter();
-
-        if (query.rows && query.rows[0]) {
-            return query.rows[0];
-        } else {
-            throw new Error('Usuário não encontrado.').stack;
+    async findUserArguments(dataObject, args) {
+        // Obtem os argumentos que o cliente passou, e trata-os como opcionais
+        const notFoundKeys = [];
+    
+        // Extrai todas as chaves do objeto
+        const dataKeys = Object.keys(dataObject);
+    
+        for (const key of dataKeys) {
+            let found = false;
+    
+            // Verifica se a chave não está em args.optional
+            // if (args.optional.includes(key)) {
+            //     found = true;
+            //     console.log('[CE] Is optional: ' + key)
+            // }
+            
+            // Verifica se a chave não está em args.fixed
+            if (args.fixed) {
+                if ((key in args.fixed)) {
+                    found = true;
+                    console.log('[CE] User argument "' + key + '" is already a Fixed Arg')
+                }
+            }
+            
+            
+            // Verifica se a chave não está em args.default[].dataArgToCheck
+            if (args.default) {
+                for (const defaultArg of args.default) {
+                    if (defaultArg.dataArgToCheck === key || (Array.isArray(defaultArg.dataArgToCheck) && defaultArg.dataArgToCheck.includes(key))) {
+                        found = true;
+                        console.log('[CE] User argument "' + key + '" is already a Default Arg')
+                    }
+                }
+            }
+            
+            if (!found) {
+                console.log('[CE] User argument "' + key + '"')
+                notFoundKeys.push(key);
+            }
         }
+    
+        return notFoundKeys;
     }
 
     async interpretExpectations(dataArray, expects) {
@@ -279,19 +287,19 @@ class MagnusBilling {
         if (payloadArgs.fixed) {
             payload = await this.addFixedArgs(payloadArgs.fixed, payload)
         } else { console.log('[CE] No fixed args found.') }
-        console.log('[CE] Post-fixed: ' + JSON.stringify(payload))
-
-        console.log('\n[CE] Adding optionals...')
-        if (payloadArgs.optional) {
-            payload = await this.addOptionalArgs(payloadArgs.optional, payload, data)
-        } else { console.log('[CE] No optional args found.') }
-        console.log('[CE] Post-optional: ' + JSON.stringify(payload))
+        console.log('[CE] Payload post-fixed: ' + JSON.stringify(payload))
 
         console.log('\n[CE] Adding defaults...')
         if (payloadArgs.default) {
             payload = await this.addDefaultArgs(payloadArgs.default, payload, data)
         } else { console.log('[CE] No default args found.') }
-        console.log('[CE] Post-default: ' + JSON.stringify(payload) + '\n')
+        console.log('[CE] Payload post-default: ' + JSON.stringify(payload) + '\n')
+
+        console.log('\n[CE] Adding user arguments...')
+        if (payloadArgs.userArguments) {
+            payload = await this.addUserArgs(payloadArgs.userArguments, payload, data)
+        } else { console.log('[CE] No user args found.') }
+        console.log('[CE] Payload post-userArgs: ' + JSON.stringify(payload))
 
         return payload
     }
@@ -307,11 +315,11 @@ class MagnusBilling {
         return payload;
     }
 
-    async addOptionalArgs(optionalArgs, payload, data) {
-        optionalArgs.forEach(optArg => {
-            console.log('[CE] Iterating OPTIONAL arg: ' + optArg)
-            if (data[optArg]) {
-                payload[optArg] = data[optArg]
+    async addUserArgs(userArgs, payload, data) {
+        userArgs.forEach(usrArg => {
+            console.log('[CE] Iterating USER ARGUMENT: ' + usrArg)
+            if (data[usrArg]) {
+                payload[usrArg] = data[usrArg]
             }
         })
         return payload
@@ -384,16 +392,45 @@ class MagnusBilling {
         return async (data) => {
             console.log('[CE] Data received: ');
             console.log(data);
-
+            
             console.log('[CE] Interpreting expects...');
             if (ArgumentObject.expects) { await this.interpretExpectations(data, ArgumentObject.expects) } else { console.log('[CE] No expects found.') };
-   
-            console.log('[CE] Interpreting payload-building...')
+
+            console.log('[CE] Obtaining user arguments: ')
+            ArgumentObject.payload.userArguments = await this.findUserArguments(data, ArgumentObject.payload)
+            console.log(ArgumentObject.payload.userArguments)
+
+
+            console.log('[CE] Building your payload structure...')
             let payload = {}
             payload = await this.interpretPayloadArgs(ArgumentObject.payload, payload, data)
 
+            console.log('[CE] Interpreting module and action...')
+            // quero, de alguma forma, colocar as ações de cada módulo em outros arquivos, pra facilitar a minha vida separando os arquivos e diminuindo o tamanho deste arquivo principal.
+            // ter um arquivo, por exemplo, users.save.js, users.destroy.js
+            // basicamente, esse arquivo ai que vai ter que enviar a query, ou padronizar a query o suficiente pra deixar aqui
+            // payload = todos os dados interpretados pra enviar na query
+            switch (action) {
+                case 'save':
+                case 'destroy':
+                    // console.log(action)
+                    payload.module = module ;   
+                    payload.action = action;                    
+                    break;
+                case 'read':
+                    console.log('read....')
+                    this.interpretFilters(data.filtro)
+                    let r = await this.read(module)
+                    this.clearFilter()
+                    return r
+                default:
+                    console.log('[CE] Unexpected action')
+                    return null
+            }
+
             console.log('[CE] All done! Returning your endpoint for "' + module + ':' + action + '"!')
-            return payload
+            // return await this.query(payload)
+            return payload // dev
         }
     }
 
@@ -405,36 +442,54 @@ class MagnusBilling {
         teste: {
             new: async (data) => {
                 const ArgumentObject = {
-                    // expects: [
-                    //     { args: ['usuario','senha','email'], logic: 'AND' },
-                    //     { args: ['id_plan', 'id_plan_filtro'], logic: 'NAND' },
-                    //     { args: ['id', 'createUser'], logic: '!OR' }
-                    // ],
-                    // payload: {
-                    //     optional: ['prefix_local', 'firstname', 'lastname', 'email', 'id_plan', 'credit', 'calllimit'],
-                    //     default: [
-                    //         {
-                    //             dataArgToCheck: 'id_user_filtro', // Checo a presença desse argumento
-                    //             payloadArgToSet: 'id_user', // Pra setar esse argumento
-                    //             dataArgIsPresent: async (data_dataArgToCheck) => { // Se estiver presente, uso isso (data.dataArgToCheck)
-                    //                 return await this.clients.users.fGetId(data_dataArgToCheck)
-                    //             },
-                    //             // dataArgIsPresent: '5',
-                    //             dataArgIsMissing: '0' // Se estiver ausente, uso isso
-                    //         }
-                    //     ],                        
-                    //     fixed: {
-                    //         createUser: 1,
-                    //         id: 0,
-                    //     }
-                    // }   
+                    expects: [
+                        { args: ['username','password','email'], logic: 'AND' },
+                        { args: ['id_plan', 'id_plan_filtro'], logic: 'NAND' },
+                        { args: ['id', 'createUser'], logic: '!OR' }
+                    ],
+                    payload: {
+                        default: [
+                            // { // Isso não precisa existir para o endpoint NEW!
+                            //     dataArgToCheck: 'id_user_filtro', // Checo a presença desse argumento
+                            //     payloadArgToSet: 'id_user', // Pra setar esse argumento
+                            //     dataArgIsPresent: async (data_dataArgToCheck) => { // Se estiver presente, uso isso (data.dataArgToCheck)
+                            //         return await this.clients.users.fGetId(data_dataArgToCheck)
+                            //     },
+                            //     // dataArgIsPresent: '5',
+                            //     dataArgIsMissing: '0' // Se estiver ausente, uso isso
+                            // },
+                            {
+                                dataArgToCheck: 'id_group', // Arg a consultar
+                                payloadArgToSet: 'id_group', // Arg a setar
+                                dataArgIsPresent: data.id_group, // Valor caso esteja presente
+                                dataArgIsMissing: '3' // Default (caso esteja ausente)
+                            },
+                            {
+                                dataArgToCheck: 'active',
+                                payloadArgToSet: 'active',
+                                dataArgIsPresent: data.active,
+                                dataArgIsMissing: 1
+                            }
+                        ],                        
+                        fixed: {
+                            createUser: 1,
+                            id: 0,
+                        }
+                    }   
                 };
-    
-                // Criando o endpoint 'new'
-                const endpoint = await this.createEndpoint('user', 'save', ArgumentObject);
-    
-                // Chamando o endpoint 'new' com os dados fornecidos
-                return await endpoint(data);
+                const endpoint = await this.createEndpoint('user', 'save', ArgumentObject); // Criando o endpoint 'new'
+                return await endpoint(data); // Chamando o endpoint 'new' com os dados fornecidos
+            },
+            find: async (data) => {
+                const ArgumentObject = {
+                    expects: [
+                        { args: ['filtro'], logic: 'AND' },
+                    ],
+                    payload: { // nao preciso editar a payload em uma CONSULTA
+                    }   
+                };
+                const endpoint = await this.createEndpoint('user', 'read', ArgumentObject); // Criando o endpoint 'new'
+                return await endpoint(data); // Chamando o endpoint 'new' com os dados fornecidos
             }
         }
     };
@@ -447,11 +502,11 @@ class MagnusBilling {
     }
 
     setFilter(field, value, comparison = 'st', type = 'string') {
-        console.log('inside setfilter')
-        console.log('field      : ' + field)
-        console.log('value      : ' + value)
-        console.log('comparison : ' + comparison)
-        console.log('type       : ' + type)
+        // console.log('inside setfilter')
+        // console.log('field      : ' + field)
+        // console.log('value      : ' + value)
+        // console.log('comparison : ' + comparison)
+        // console.log('type       : ' + type)
         this.filter.push({
             type: type,
             field: field,
@@ -462,9 +517,9 @@ class MagnusBilling {
 
     interpretFilters(filterList) {
         if (filterList !== undefined && filterList.length > 0) {
-            console.log('filter list:' + filterList)
+            // console.log('filter list:' + filterList)
             filterList.forEach(filtro => {
-                console.log(`Filtros recebidos: ${filtro}`);
+                // console.log(`Filtros recebidos: ${filtro}`);
                 let [campo, operador, valor, tipo] = filtro;
 
                 // 'usuario' -> 'username'
@@ -477,10 +532,10 @@ class MagnusBilling {
                 }
                 
                 // Confirmando
-                console.log('Campo    : ' + campoInterpretado + ' | Tipo: ' + typeof(campoInterpretado));
-                console.log('Operador : ' + operadorInterpretado + ' | Tipo: ' + typeof(operadorInterpretado));
-                console.log('Valor    : ' + valor + ' | Tipo: ' + typeof(valor));
-                console.log('Tipo     : ' + tipo + ' | Tipo: ' + typeof(tipo));
+                // console.log('Campo    : ' + campoInterpretado + ' | Tipo: ' + typeof(campoInterpretado));
+                // console.log('Operador : ' + operadorInterpretado + ' | Tipo: ' + typeof(operadorInterpretado));
+                // console.log('Valor    : ' + valor + ' | Tipo: ' + typeof(valor));
+                // console.log('Tipo     : ' + tipo + ' | Tipo: ' + typeof(tipo));
 
                 this.setFilter(campoInterpretado, valor, operadorInterpretado, tipo);
 
@@ -659,7 +714,7 @@ class MagnusBilling {
                         throw (`Filtro "${filters}": ${ret.count} resultados.`);
                     } else {
                         const user = ret.rows[0];
-                        console.log(`---> O ID desse usuário é: ${user.id}`);
+                        // console.log(`---> O ID desse usuário é: ${user.id}`);
                         return user.id;
                     }
                 } catch (err) {

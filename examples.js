@@ -32,28 +32,46 @@ const mb = new MagnusBilling(API_KEY, API_SECRET, MAGNUS_HOST);
 //     console.log("\nmb.test.teste.new finish")
 // })
 
-mb.test.teste.new({
-    usuario: 'wasd',
-    senha: 'dwadwa',
-    email: 'adrian@phonevox.com.br',
-    firstname: 'adrian',
-    credit: '10',
-    id_user_filtro: [
-        ['username', 'eq', 'client-2']
+// mb.test.teste.new({
+//     username: 'wasd',
+//     password: 'dwadwa',
+//     email: 'adrian@phonevox.com.br',
+//     firstname: 'adrian',
+//     id_group: 4,
+//     credit: '10',
+//     // id_user_filtro: [
+//     //     ['username', 'eq', 'client-2']
+//     // ]
+// })
+//     .then(ret => {
+//         console.log('################################################################################')
+//         console.log(ret);
+//         console.log("\nmb.test.teste.new ok");
+//     })
+//     .catch(error => {
+//         console.error(error);
+//         console.log("\nmb.test.teste.new error");
+//     })
+// .finally(() => {
+//     console.log("\nmb.test.teste.new finish");
+// });
+mb.test.teste.find({
+    filtro: [
+        ['username', '=', 'wasd']
     ]
 })
     .then(ret => {
-        // console.log('################################################################################')
-        // console.log(ret);
-        console.log("\nmb.test.teste.new ok");
+        console.log('################################################################################')
+        console.log(ret);
+        console.log("\nmb.test.teste.find ok");
     })
     .catch(error => {
         console.error(error);
-        console.log("\nmb.test.teste.new error");
+        console.log("\nmb.test.teste.find error");
     })
-    .finally(() => {
-        console.log("\nmb.test.teste.new finish");
-    });
+.finally(() => {
+    console.log("\nmb.test.teste.find finish");
+});
 
 
 
