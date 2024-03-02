@@ -265,154 +265,134 @@ class MagnusBilling {
         }
     }
 
+    async interpretExpectations(dataArray, expects) {
+        expects.forEach(expectation => {
+            const { args, logic } = expectation;
+            this._ExpectedArgs(dataArray, args, logic)
+        });
+    }
+
+    async interpretPayloadArgs(payloadArgs, payload, data) {
+        if (!payloadArgs) { console.log('[CE] No payload args.'); return {} }
+            
+        console.log('\n[CE] Adding fixeds....')
+        if (payloadArgs.fixed) {
+            payload = await this.addFixedArgs(payloadArgs.fixed, payload)
+        } else { console.log('[CE] No fixed args found.') }
+        console.log('[CE] Post-fixed: ' + JSON.stringify(payload))
+
+        console.log('\n[CE] Adding optionals...')
+        if (payloadArgs.optional) {
+            payload = await this.addOptionalArgs(payloadArgs.optional, payload, data)
+        } else { console.log('[CE] No optional args found.') }
+        console.log('[CE] Post-optional: ' + JSON.stringify(payload))
+
+        console.log('\n[CE] Adding defaults...')
+        if (payloadArgs.default) {
+            payload = await this.addDefaultArgs(payloadArgs.default, payload, data)
+        } else { console.log('[CE] No default args found.') }
+        console.log('[CE] Post-default: ' + JSON.stringify(payload) + '\n')
+
+        return payload
+    }
+
+    async addFixedArgs(fixedArgs, payload) {
+        // Adicionando a parte fixada da payload
+        
+        for (const [fixArg, value] of Object.entries(fixedArgs)) {
+            console.log('[CE] Iterating FIXED arg: ' + fixArg)
+            payload[fixArg] = value;
+        }
+
+        return payload;
+    }
+
+    async addOptionalArgs(optionalArgs, payload, data) {
+        optionalArgs.forEach(optArg => {
+            console.log('[CE] Iterating OPTIONAL arg: ' + optArg)
+            if (data[optArg]) {
+                payload[optArg] = data[optArg]
+            }
+        })
+        return payload
+    }
+
+    async addDefaultArgs(defaultArgs, payload, data) {
+        const promises = []; // Array pra armazenar a desgraça das promessas que PODEM existir como default (pra pesquisa de IDs)
+        defaultArgs.forEach(defArg => {
+            const { payloadArgToSet, dataArgToCheck, dataArgIsPresent, dataArgIsMissing  } = defArg;
+            // console.log('payload arg     : ' + payloadArgToSet)
+            // console.log('comparator      : ' + dataArgToCheck)
+            // console.log('value isPresent : ' + dataArgIsPresent)
+            // console.log('value isMissing : ' + dataArgIsMissing)
+            console.log('[CE] Iterating DEFAULT arg: ' + payloadArgToSet + ' (comp:' + dataArgToCheck + ')')
+            
+            if(data[dataArgToCheck]) {
+                let trueValue;
+                if (typeof dataArgIsPresent === 'function') {
+                    // Se dataArgIsPresent for uma função, chamamos ela passando o valor de data[dataArgToCheck]
+                    trueValue = dataArgIsPresent(data[dataArgToCheck]);
+                } else {
+                    // Se não for uma função, usamos o valor diretamente
+                    trueValue = dataArgIsPresent;
+                }
+        
+                // Adiciona a promise ao array de promessas se trueValue for uma promise
+                if (trueValue instanceof Promise) {
+                    promises.push(
+                        trueValue
+                            .then(result => {
+                                payload[payloadArgToSet] = result;
+                            })
+                            .catch(error => {
+                                console.error(error);
+                                // payload[payloadArgToSet] = dataArgIsMissing;
+                                throw new Error('Ao realizar sua requisição, retornou um erro. Não vou assumir o valor default!')
+                            })
+                    );
+                } else {
+                    // Se não for uma promise, usamos o valor diretamente
+                    // console.log('true val: ' + trueValue)
+                    // console.log('payload : ' + JSON.stringify(payload))
+                    // console.log('arg     : ' + payloadArgToSet)
+                    payload[payloadArgToSet] = trueValue;
+                }
+            } else {
+                // Parâmetro não está presente, assumimos o valor padrão.
+                payload[payloadArgToSet] = dataArgIsMissing;
+            }
+        });
+
+        await Promise.all(promises)
+            // .then(() => {
+            //     console.log('[CE] Awaited Promised Payload: ');
+            //     console.log(payload);
+            // })
+            .catch(error => {
+                console.error(error);
+                throw new Error("eu odeio promises")
+            });
+
+        return payload
+    }
+    
+    
+
 // TESTNGIN!!!!!!!!!! ///////////////////////////////////////////////////////////////////////////////////
 
-    async createEndpoint (module, action, ArgumentObject) {
-        // endpoint = 'new'
-        // module   = 'user'
-        // action   = 'save'                | destroy: delete | save: new, edit | read: find, fGetId
-        // ArgumentObject = {
-        //     expects: [
-        //         {
-        //             args: ['usuario','senha','email'], logic: 'AND'
-        //         },
-        //         {
-        //             args: ['id_plan', 'id_plan_filtro'], logic: 'NAND'
-        //         },
-        //         {
-        //             args: ['id', 'createUser'], logic: '!OR' // espero que não tenha nenhum dessa lista, eu Expect (espero) que ! (não tenha) OR (qualquer um)
-        //         }
-        //     ],
-        //     payload: {
-        //         // Opcionais, ausentes caso não sejam informados
-        //         optional: ['prefix_local', 'firstname', 'lastname', 'id_plan', 'credit', 'calllimit'],
-        //         //...this.opcional('arg', data.arg),
-                
-        //         // Opcionais, com valores padrões caso não sejam informados
-        //         default: [
-        //             // {
-        //             //     arg: '',
-        //             //     comparator: '',
-        //             //     true: async (id_user_filtro) => {
-        //             //         return await this.clients.users.fGetId(id_user_filtro)
-        //             //     },
-        //             //     default: ''
-        //             // },
-        //             {
-        //                 arg: 'id_user',
-        //                 comparator: 'id_user_filtro',
-        //                 vTrue: async (id_user_filtro) => {
-        //                     return await this.clients.users.fGetId(id_user_filtro)
-        //                 },
-        //                 vDefault: '0'
-        //             }
-        //         ],
-        //         //...this.opcional('arg', comparator ? true : default),
-                
-        //         // Constantes, imutáveis
-        //         fixed: [
-        //             {
-        //                 arg: 'createUser',
-        //                 value: '1'
-        //             },
-        //             {
-        //                 arg: 'id',
-        //                 value: '0'
-        //             }
-        //         ]
-        //     }   
-        // }
+    async createEndpoint(module, action, ArgumentObject) {
         return async (data) => {
-            // realizar os _ExpectArgs
-            ArgumentObject.expects.forEach(expectation => {
-                const { args, logic } = expectation;
-                this._ExpectedArgs(data, args, logic)
-            });
+            console.log('[CE] Data received: ');
+            console.log(data);
 
-            console.log('Data recebida: ')
-            console.log(data)
-
-            // adicionar argumentos fixos
-            // adicionar argumentos opcionais
-            // adicionar argumentos defaults
-            
+            console.log('[CE] Interpreting expects...');
+            if (ArgumentObject.expects) { await this.interpretExpectations(data, ArgumentObject.expects) } else { console.log('[CE] No expects found.') };
+   
+            console.log('[CE] Interpreting payload-building...')
             let payload = {}
+            payload = await this.interpretPayloadArgs(ArgumentObject.payload, payload, data)
 
-            console.log('Payload pré-fixed')
-            console.log(payload)
-            // Adicionando a parte fixada da payload
-            ArgumentObject.payload.fixed.forEach(fixed => {
-                const { arg, value } = fixed;
-                payload[`${arg}`] = value;
-            });
-
-            console.log('Payload pré-optional')
-            console.log(payload)
-            //Adicionando a parte opcional da payload
-            ArgumentObject.payload.optional.forEach(optionalArg => {
-                // console.log('iterando pelos argumentos opcionais: ' + optionalArg)
-                if (data[`${optionalArg}`]) {
-                    payload[`${optionalArg}`] = data[`${optionalArg}`]
-                }
-            })
-
-
-
-            // Array pra armazenar a desgraça das promessas que PODEM existir como default (pra pesquisa de IDs)
-            const promises = [];
-            ArgumentObject.payload.default.forEach(defaultArg => {
-                const { arg, comparator, vTrue, vDefault  } = defaultArg;
-                console.log('iterando pelos argumentos defaults: ' + defaultArg)
-                console.log('arg        : ' + arg)
-                console.log('comparator : ' + comparator)
-                console.log('vTrue      : ' + vTrue)
-                console.log('vDefault   : ' + vDefault)
-                
-                if(data[`${comparator}`]) {
-                    let trueValue;
-                    if (typeof vTrue === 'function') {
-                        // Se vTrue for uma função, chamamos ela passando o valor de data[comparator]
-                        trueValue = vTrue(data[`${comparator}`]);
-                    } else {
-                        // Se não for uma função, usamos o valor diretamente
-                        trueValue = vTrue;
-                    }
-            
-                    // Adiciona a promise ao array de promessas se trueValue for uma promise
-                    if (trueValue instanceof Promise) {
-                        promises.push(
-                            trueValue
-                                .then(result => {
-                                    payload[`${arg}`] = result;
-                                })
-                                .catch(error => {
-                                    console.error(error);
-                                    // payload[`${arg}`] = vDefault;
-                                    throw new Error('Tua promise deu erro, não vou assumir nada não')
-                                })
-                        );
-                    } else {
-                        // Se não for uma promise, usamos o valor diretamente
-                        payload[`${arg}`] = trueValue;
-                    }
-                } else {
-                    // // Usamos o valor padrão diretamente se não precisarmos chamar a função vTrue
-                    // payload[`${arg}`] = vDefault;
-                    throw new Error('Tua promise deu erro, não vou assumir nada não')
-                }
-            });
-
-            await Promise.all(promises)
-                .then(() => {
-                    console.log('Payload gerada: ');
-                    console.log(payload);
-                })
-                .catch(error => {
-                    // Lidar com erros, se necessário
-                    console.error(error);
-                    throw new Error("eu odeio promises")
-                });
-            
+            console.log('[CE] All done! Returning your endpoint for "' + module + ':' + action + '"!')
             return payload
         }
     }
@@ -425,41 +405,29 @@ class MagnusBilling {
         teste: {
             new: async (data) => {
                 const ArgumentObject = {
-                    expects: [
-                        {
-                            args: ['usuario','senha','email'], logic: 'AND'
-                        },
-                        {
-                            args: ['id_plan', 'id_plan_filtro'], logic: 'NAND'
-                        },
-                        {
-                            args: ['id', 'createUser'], logic: '!OR'
-                        }
-                    ],
-                    payload: {
-                        optional: ['prefix_local', 'firstname', 'lastname', 'id_plan', 'credit', 'calllimit'],
-                        default: [
-                            {
-                                arg: 'id_user', // #2 : Seto o argumento arg
-                                comparator: 'id_user_filtro', // #1 : Usando id_user_filtro (para conferir se é true/false)
-                                // vTrue: async (id_user_filtro) => {                               // #3 Pra isso, se for true
-                                //     return await this.clients.users.fGetId(id_user_filtro)
-                                // },
-                                vTrue: '5',
-                                vDefault: '0'                                                    // #4 Pra isso, se for false
-                            }
-                        ],                        
-                        fixed: [
-                            {
-                                arg: 'createUser',
-                                value: '1'
-                            },
-                            {
-                                arg: 'id',
-                                value: '0'
-                            }
-                        ]
-                    }   
+                    // expects: [
+                    //     { args: ['usuario','senha','email'], logic: 'AND' },
+                    //     { args: ['id_plan', 'id_plan_filtro'], logic: 'NAND' },
+                    //     { args: ['id', 'createUser'], logic: '!OR' }
+                    // ],
+                    // payload: {
+                    //     optional: ['prefix_local', 'firstname', 'lastname', 'email', 'id_plan', 'credit', 'calllimit'],
+                    //     default: [
+                    //         {
+                    //             dataArgToCheck: 'id_user_filtro', // Checo a presença desse argumento
+                    //             payloadArgToSet: 'id_user', // Pra setar esse argumento
+                    //             dataArgIsPresent: async (data_dataArgToCheck) => { // Se estiver presente, uso isso (data.dataArgToCheck)
+                    //                 return await this.clients.users.fGetId(data_dataArgToCheck)
+                    //             },
+                    //             // dataArgIsPresent: '5',
+                    //             dataArgIsMissing: '0' // Se estiver ausente, uso isso
+                    //         }
+                    //     ],                        
+                    //     fixed: {
+                    //         createUser: 1,
+                    //         id: 0,
+                    //     }
+                    // }   
                 };
     
                 // Criando o endpoint 'new'

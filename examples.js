@@ -39,12 +39,12 @@ mb.test.teste.new({
     firstname: 'adrian',
     credit: '10',
     id_user_filtro: [
-        ['username', 'eq', 'root']
+        ['username', 'eq', 'client-2']
     ]
 })
     .then(ret => {
-        console.log('################################################################################')
-        console.log(ret);
+        // console.log('################################################################################')
+        // console.log(ret);
         console.log("\nmb.test.teste.new ok");
     })
     .catch(error => {
