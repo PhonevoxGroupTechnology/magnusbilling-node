@@ -17,22 +17,22 @@ const mb = new MagnusBilling(API_KEY, API_SECRET, MAGNUS_HOST);
 
 
 // test with endpoint maker
-// mb.test.teste.new({
+// mb.test.user.add({
 
 // })
 //     .then(ret => {
 //         console.log(ret)
-//         console.log("\nmb.test.teste.new ok")
+//         console.log("\nmb.test.user.add ok")
 //     })
 //     .catch(error => {
 //         console.error(error)
-//         console.log("\nmb.test.teste.new error")
+//         console.log("\nmb.test.user.add error")
 //     })
 // .finally(() => {
-//     console.log("\nmb.test.teste.new finish")
+//     console.log("\nmb.test.user.add finish")
 // })
 
-// mb.test.teste.new({
+// mb.test.user.add({
 //     username: 'wasd',
 //     password: 'dwadwa',
 //     email: 'adrian@phonevox.com.br',
@@ -46,31 +46,31 @@ const mb = new MagnusBilling(API_KEY, API_SECRET, MAGNUS_HOST);
 //     .then(ret => {
 //         console.log('################################################################################')
 //         console.log(ret);
-//         console.log("\nmb.test.teste.new ok");
+//         console.log("\nmb.test.user.add ok");
 //     })
 //     .catch(error => {
 //         console.error(error);
-//         console.log("\nmb.test.teste.new error");
+//         console.log("\nmb.test.user.add error");
 //     })
 // .finally(() => {
-//     console.log("\nmb.test.teste.new finish");
+//     console.log("\nmb.test.user.add finish");
 // });
-mb.test.teste.find({
+mb.test.sip.find({
     filtro: [
-        ['username', '=', 'wasd']
+        ['name', '=', '1111']
     ]
 })
     .then(ret => {
         console.log('################################################################################')
         console.log(ret);
-        console.log("\nmb.test.teste.find ok");
+        console.log("\nmb.test.user.find ok");
     })
     .catch(error => {
         console.error(error);
-        console.log("\nmb.test.teste.find error");
+        console.log("\nmb.test.user.find error");
     })
 .finally(() => {
-    console.log("\nmb.test.teste.find finish");
+    console.log("\nmb.test.user.find finish");
 });
 
 

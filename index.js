@@ -4,9 +4,9 @@ const axios = require('axios');
 // "/var/www/html/mbilling/protected/controllers/DidController.php +462" > adicionar um "s" no "$value[id]"
 
 const { isFloat } = require('./lib/Utils');
-const { InvalidOperator, Denied, ValidatingError, FindError, ExpectedArgumentMisuse, ExpectedArgumentMissingArg, ExpectedArgumentTooManyArguments, ExpectedArgumentArgumentNotAllowed } = require('./lib/Errors');
-const { isSet } = require('util/types');
-const { clear } = require('console');
+
+const { ENDPOINT_USER } = require('./lib/endpoints/user');
+const { ENDPOINT_SIP } = require('./lib/endpoints/sip');
 
 class MagnusBilling {
     constructor(api_key, api_secret, public_url) {
@@ -24,95 +24,7 @@ class MagnusBilling {
             '<': 'lt',   // less than     | menor que
             '>': 'gt',   // greater than  | maior que
         }
-
         this._validSinaisOperacao = ['st', 'ed', 'ct', 'eq', 'lt', 'gt']
-
-        this._mappingTraducaoCamposUsers = {
-            'id': 'id',
-            'id_usuario': 'id_user',
-            'id_grupo': 'id_group',
-            'id_grupo_agente': 'id_group_agent',
-            'id_plano': 'id_plan',
-            'id_oferta': 'id_offer',
-            'usuario': 'username',
-            'senha': 'password',
-            'credito': 'credit',
-            'ativo': 'active',
-            'data_criacao': 'creationdate',
-            'data_primeiro_uso': 'firstusedate',
-            'data_expiracao': 'expirationdate',
-            'ativar_expiracao': 'enableexpire',
-            'dias_expiracao': 'expiredays',
-            'sobrenome': 'lastname',
-            'nome': 'firstname',
-            'endereco': 'address',
-            'cidade': 'city',
-            'bairro': 'neighborhood',
-            'estado': 'state',
-            'pais': 'country',
-            'cep': 'zipcode',
-            'telefone': 'phone',
-            'celular': 'mobile',
-            'email': 'email',
-            'email2': 'email2',
-            'vat': 'vat',
-            'nome_empresa': 'company_name',
-            'nome_comercial': 'commercial_name',
-            'website_empresa': 'company_website',
-            'numero_estado': 'state_number',
-            'dist': 'dist',
-            'valor_contrato': 'contract_value',
-            'ultima_utilizacao': 'lastuse',
-            'tipo_pagamento': 'typepaid',
-            'limite_credito': 'creditlimit',
-            'idioma': 'language',
-            'redial': 'redial',
-            'chave_login': 'loginkey',
-            'ultima_notificacao': 'last_notification',
-            'notificacao_credito': 'credit_notification',
-            'notificacao_credito_diaria': 'credit_notification_daily',
-            'restricao': 'restriction',
-            'pin_cartao_telefonico': 'callingcard_pin',
-            'prefixo_local': 'prefix_local',
-            'callshop': 'callshop',
-            'plano_dia': 'plan_day',
-            'gravar_chamada': 'record_call',
-            'ativo_paypal': 'active_paypal',
-            'boleto': 'boleto',
-            'dia_boleto': 'boleto_day',
-            'descricao': 'description',
-            'ultimo_login': 'last_login',
-            'google_authenticator_ativar': 'googleAuthenticator_enable',
-            'google_authenticator_chave': 'google_authenticator_key',
-            'doc': 'doc',
-            'id_sacado_sac': 'id_sacado_sac',
-            'espaco_disco': 'disk_space',
-            'limite_conta_sip': 'sipaccountlimit',
-            'limite_chamada': 'calllimit',
-            'cps_limite': 'cpslimit',
-            'erro_limite_chamada': 'calllimit_error',
-            'formato_mix_monitor': 'mix_monitor_format',
-            'mostrar_preco_venda_transferencia': 'transfer_show_selling_price',
-            'taxa_servico_bd_transferencia': 'transfer_bdservice_rate',
-            'lucro_dbbl_rocket_transferencia': 'transfer_dbbl_rocket_profit',
-            'lucro_bkash_transferencia': 'transfer_bkash_profit',
-            'lucro_flexiload_transferencia': 'transfer_flexiload_profit',
-            'lucro_internacional_transferencia': 'transfer_international_profit',
-            'transferencia_dbbl_rocket': 'transfer_dbbl_rocket',
-            'transferencia_bkash': 'transfer_bkash',
-            'transferencia_flexiload': 'transfer_flexiload',
-            'transferencia_internacional': 'transfer_international',
-            'uso_restricao': 'restriction_use',
-            'servicos_email': 'email_services',
-            'email_did': 'email_did',
-            'limite_chamada_entrante': 'inbound_call_limit',
-            'idNomeGrupo': 'idGroupname',
-            'idGrupoTipoUsuario': 'idGroupid_user_type',
-            'idNomePlano': 'idPlanname',
-            'idUsuarioNomeUsuario': 'idUserusername',
-            'contagem_sip': 'sip_count',
-            'oferta': 'offer'
-        }
           
     }
 
@@ -227,273 +139,15 @@ class MagnusBilling {
             username: username,
             getMenu: 1
         });
-    }
-
-    async findUserArguments(dataObject, args) {
-        // Obtem os argumentos que o cliente passou, e trata-os como opcionais
-        const notFoundKeys = [];
-    
-        // Extrai todas as chaves do objeto
-        const dataKeys = Object.keys(dataObject);
-    
-        for (const key of dataKeys) {
-            let found = false;
-    
-            // Verifica se a chave não está em args.optional
-            // if (args.optional.includes(key)) {
-            //     found = true;
-            //     console.log('[CE] Is optional: ' + key)
-            // }
-            
-            // Verifica se a chave não está em args.fixed
-            if (args.fixed) {
-                if ((key in args.fixed)) {
-                    found = true;
-                    console.log('[CE] User argument "' + key + '" is already a Fixed Arg')
-                }
-            }
-            
-            
-            // Verifica se a chave não está em args.default[].dataArgToCheck
-            if (args.default) {
-                for (const defaultArg of args.default) {
-                    if (defaultArg.dataArgToCheck === key || (Array.isArray(defaultArg.dataArgToCheck) && defaultArg.dataArgToCheck.includes(key))) {
-                        found = true;
-                        console.log('[CE] User argument "' + key + '" is already a Default Arg')
-                    }
-                }
-            }
-            
-            if (!found) {
-                console.log('[CE] User argument "' + key + '"')
-                notFoundKeys.push(key);
-            }
-        }
-    
-        return notFoundKeys;
-    }
-
-    async interpretExpectations(dataArray, expects) {
-        expects.forEach(expectation => {
-            const { args, logic } = expectation;
-            this._ExpectedArgs(dataArray, args, logic)
-        });
-    }
-
-    async interpretPayloadArgs(payloadArgs, payload, data) {
-        if (!payloadArgs) { console.log('[CE] No payload args.'); return {} }
-            
-        console.log('\n[CE] Adding fixeds....')
-        if (payloadArgs.fixed) {
-            payload = await this.addFixedArgs(payloadArgs.fixed, payload)
-        } else { console.log('[CE] No fixed args found.') }
-        console.log('[CE] Payload post-fixed: ' + JSON.stringify(payload))
-
-        console.log('\n[CE] Adding defaults...')
-        if (payloadArgs.default) {
-            payload = await this.addDefaultArgs(payloadArgs.default, payload, data)
-        } else { console.log('[CE] No default args found.') }
-        console.log('[CE] Payload post-default: ' + JSON.stringify(payload) + '\n')
-
-        console.log('\n[CE] Adding user arguments...')
-        if (payloadArgs.userArguments) {
-            payload = await this.addUserArgs(payloadArgs.userArguments, payload, data)
-        } else { console.log('[CE] No user args found.') }
-        console.log('[CE] Payload post-userArgs: ' + JSON.stringify(payload))
-
-        return payload
-    }
-
-    async addFixedArgs(fixedArgs, payload) {
-        // Adicionando a parte fixada da payload
-        
-        for (const [fixArg, value] of Object.entries(fixedArgs)) {
-            console.log('[CE] Iterating FIXED arg: ' + fixArg)
-            payload[fixArg] = value;
-        }
-
-        return payload;
-    }
-
-    async addUserArgs(userArgs, payload, data) {
-        userArgs.forEach(usrArg => {
-            console.log('[CE] Iterating USER ARGUMENT: ' + usrArg)
-            if (data[usrArg]) {
-                payload[usrArg] = data[usrArg]
-            }
-        })
-        return payload
-    }
-
-    async addDefaultArgs(defaultArgs, payload, data) {
-        const promises = []; // Array pra armazenar a desgraça das promessas que PODEM existir como default (pra pesquisa de IDs)
-        defaultArgs.forEach(defArg => {
-            const { payloadArgToSet, dataArgToCheck, dataArgIsPresent, dataArgIsMissing  } = defArg;
-            // console.log('payload arg     : ' + payloadArgToSet)
-            // console.log('comparator      : ' + dataArgToCheck)
-            // console.log('value isPresent : ' + dataArgIsPresent)
-            // console.log('value isMissing : ' + dataArgIsMissing)
-            console.log('[CE] Iterating DEFAULT arg: ' + payloadArgToSet + ' (comp:' + dataArgToCheck + ')')
-            
-            if(data[dataArgToCheck]) {
-                let trueValue;
-                if (typeof dataArgIsPresent === 'function') {
-                    // Se dataArgIsPresent for uma função, chamamos ela passando o valor de data[dataArgToCheck]
-                    trueValue = dataArgIsPresent(data[dataArgToCheck]);
-                } else {
-                    // Se não for uma função, usamos o valor diretamente
-                    trueValue = dataArgIsPresent;
-                }
-        
-                // Adiciona a promise ao array de promessas se trueValue for uma promise
-                if (trueValue instanceof Promise) {
-                    promises.push(
-                        trueValue
-                            .then(result => {
-                                payload[payloadArgToSet] = result;
-                            })
-                            .catch(error => {
-                                console.error(error);
-                                // payload[payloadArgToSet] = dataArgIsMissing;
-                                throw new Error('Ao realizar sua requisição, retornou um erro. Não vou assumir o valor default!')
-                            })
-                    );
-                } else {
-                    // Se não for uma promise, usamos o valor diretamente
-                    // console.log('true val: ' + trueValue)
-                    // console.log('payload : ' + JSON.stringify(payload))
-                    // console.log('arg     : ' + payloadArgToSet)
-                    payload[payloadArgToSet] = trueValue;
-                }
-            } else {
-                // Parâmetro não está presente, assumimos o valor padrão.
-                payload[payloadArgToSet] = dataArgIsMissing;
-            }
-        });
-
-        await Promise.all(promises)
-            // .then(() => {
-            //     console.log('[CE] Awaited Promised Payload: ');
-            //     console.log(payload);
-            // })
-            .catch(error => {
-                console.error(error);
-                throw new Error("eu odeio promises")
-            });
-
-        return payload
-    }
-    
-    
+    }   
 
 // TESTNGIN!!!!!!!!!! ///////////////////////////////////////////////////////////////////////////////////
 
-    async createEndpoint(module, action, ArgumentObject) {
-        return async (data) => {
-            console.log('[CE] Data received: ');
-            console.log(data);
-            
-            console.log('[CE] Interpreting expects...');
-            if (ArgumentObject.expects) { await this.interpretExpectations(data, ArgumentObject.expects) } else { console.log('[CE] No expects found.') };
-
-            console.log('[CE] Obtaining user arguments: ')
-            ArgumentObject.payload.userArguments = await this.findUserArguments(data, ArgumentObject.payload)
-            console.log(ArgumentObject.payload.userArguments)
-
-
-            console.log('[CE] Building your payload structure...')
-            let payload = {}
-            payload = await this.interpretPayloadArgs(ArgumentObject.payload, payload, data)
-
-            console.log('[CE] Interpreting module and action...')
-            // quero, de alguma forma, colocar as ações de cada módulo em outros arquivos, pra facilitar a minha vida separando os arquivos e diminuindo o tamanho deste arquivo principal.
-            // ter um arquivo, por exemplo, users.save.js, users.destroy.js
-            // basicamente, esse arquivo ai que vai ter que enviar a query, ou padronizar a query o suficiente pra deixar aqui
-            // payload = todos os dados interpretados pra enviar na query
-            switch (action) {
-                case 'save':
-                case 'destroy':
-                    // console.log(action)
-                    payload.module = module ;   
-                    payload.action = action;                    
-                    break;
-                case 'read':
-                    console.log('read....')
-                    this.interpretFilters(data.filtro)
-                    let r = await this.read(module)
-                    this.clearFilter()
-                    return r
-                default:
-                    console.log('[CE] Unexpected action')
-                    return null
-            }
-
-            console.log('[CE] All done! Returning your endpoint for "' + module + ':' + action + '"!')
-            // return await this.query(payload)
-            return payload // dev
-        }
-    }
-
-
-
-
-
+    // de-facto API
     test = {
-        teste: {
-            new: async (data) => {
-                const ArgumentObject = {
-                    expects: [
-                        { args: ['username','password','email'], logic: 'AND' },
-                        { args: ['id_plan', 'id_plan_filtro'], logic: 'NAND' },
-                        { args: ['id', 'createUser'], logic: '!OR' }
-                    ],
-                    payload: {
-                        default: [
-                            // { // Isso não precisa existir para o endpoint NEW!
-                            //     dataArgToCheck: 'id_user_filtro', // Checo a presença desse argumento
-                            //     payloadArgToSet: 'id_user', // Pra setar esse argumento
-                            //     dataArgIsPresent: async (data_dataArgToCheck) => { // Se estiver presente, uso isso (data.dataArgToCheck)
-                            //         return await this.clients.users.fGetId(data_dataArgToCheck)
-                            //     },
-                            //     // dataArgIsPresent: '5',
-                            //     dataArgIsMissing: '0' // Se estiver ausente, uso isso
-                            // },
-                            {
-                                dataArgToCheck: 'id_group', // Arg a consultar
-                                payloadArgToSet: 'id_group', // Arg a setar
-                                dataArgIsPresent: data.id_group, // Valor caso esteja presente
-                                dataArgIsMissing: '3' // Default (caso esteja ausente)
-                            },
-                            {
-                                dataArgToCheck: 'active',
-                                payloadArgToSet: 'active',
-                                dataArgIsPresent: data.active,
-                                dataArgIsMissing: 1
-                            }
-                        ],                        
-                        fixed: {
-                            createUser: 1,
-                            id: 0,
-                        }
-                    }   
-                };
-                const endpoint = await this.createEndpoint('user', 'save', ArgumentObject); // Criando o endpoint 'new'
-                return await endpoint(data); // Chamando o endpoint 'new' com os dados fornecidos
-            },
-            find: async (data) => {
-                const ArgumentObject = {
-                    expects: [
-                        { args: ['filtro'], logic: 'AND' },
-                    ],
-                    payload: { // nao preciso editar a payload em uma CONSULTA
-                    }   
-                };
-                const endpoint = await this.createEndpoint('user', 'read', ArgumentObject); // Criando o endpoint 'new'
-                return await endpoint(data); // Chamando o endpoint 'new' com os dados fornecidos
-            }
-        }
+        user: ENDPOINT_USER(this),
+        sip: ENDPOINT_SIP(this),
     };
-
 
 // TESTNGIN!!!!!!!!!! ///////////////////////////////////////////////////////////////////////////////////
 
@@ -522,8 +176,6 @@ class MagnusBilling {
                 // console.log(`Filtros recebidos: ${filtro}`);
                 let [campo, operador, valor, tipo] = filtro;
 
-                // 'usuario' -> 'username'
-                const campoInterpretado = this._mappingTraducaoCamposUsers[campo] || campo;
                 // '=' -> 'eq'
                 const operadorInterpretado = this._mappingSinaisOperacao[operador] || operador;
 
@@ -532,12 +184,12 @@ class MagnusBilling {
                 }
                 
                 // Confirmando
-                // console.log('Campo    : ' + campoInterpretado + ' | Tipo: ' + typeof(campoInterpretado));
+                // console.log('Campo    : ' + campo + ' | Tipo: ' + typeof(campo));
                 // console.log('Operador : ' + operadorInterpretado + ' | Tipo: ' + typeof(operadorInterpretado));
                 // console.log('Valor    : ' + valor + ' | Tipo: ' + typeof(valor));
                 // console.log('Tipo     : ' + tipo + ' | Tipo: ' + typeof(tipo));
 
-                this.setFilter(campoInterpretado, valor, operadorInterpretado, tipo);
+                this.setFilter(campo, valor, operadorInterpretado, tipo);
 
             });
         }
@@ -554,43 +206,6 @@ class MagnusBilling {
         return ret
     }
 
-    _ExpectedArgs(data, expectedArgs, condition = "AND") {
-        if (condition === "AND") {
-            const missingArgs = expectedArgs.filter(arg => !(arg in data));
-            if (missingArgs.length > 0) {
-                throw new ExpectedArgumentMissingArg(`Argumentos faltantes: ${missingArgs.join(', ')}`).stack;
-            }
-        } else if (condition === "NAND") {
-            const presentArgsCount = expectedArgs.filter(arg => arg in data).length;
-            if (presentArgsCount === expectedArgs.length) {
-                throw new ExpectedArgumentTooManyArguments(`Conflito de argumentos: ${expectedArgs.join(', ')}`).stack;
-            }
-        } else if (condition === "OR") {
-            if (!expectedArgs.some(arg => arg in data)) {
-                throw new ExpectedArgumentMissingArg(`Argumentos necessários: ${expectedArgs.join(', ')}`).stack;
-            }
-        } else if (condition === "!OR") { // funny moment
-            if (expectedArgs.some(arg => arg in data)) {
-                throw new ExpectedArgumentArgumentNotAllowed(`Argumentos não permitidos: ${expectedArgs.join(', ')}`).stack;
-            }
-        } else if (condition === "XOR") {
-            const presentArgsCount = expectedArgs.filter(arg => arg in data).length;
-            if (presentArgsCount === 0) {
-                throw new ExpectedArgumentMissingArg(`Ao menos um argumento necessário: ${expectedArgs.join(', ')}`).stack;
-            }
-            if (!(presentArgsCount === 1)) {
-                throw new ExpectedArgumentTooManyArguments(`Apenas um dos argumentos é necessário: ${expectedArgs.join(', ')}`).stack;
-            }
-        } else if (condition === "NOR") {
-            const forbiddenArgs = expectedArgs.filter(arg => arg in data);
-            if (forbiddenArgs.length > 0) {
-                throw new ExpectedArgumentArgumentNotAllowed(`Argumentos não permitidos: ${forbiddenArgs.join(', ')}`).stack;
-            }
-        } else {
-            throw new ExpectedArgumentMisuse(`Condição inválida: ${condition}. Condição precisa ser "AND" ou "OR".`).stack;
-        }
-    }
-
     opcional(chave, valor) {
         return valor !== undefined ? { [chave]: valor } : {};
     }
@@ -599,22 +214,6 @@ class MagnusBilling {
     clients = {
         users: { // DONE
             new: async (data) => {
-                /**
-                 * Cria um novo usuário com os dados fornecidos.
-                 * @param {Object} data - Os dados do usuário a serem criados.
-                 * @param {string} data.usuario - O nome de usuário do novo usuário (obrigatório).
-                 * @param {string} data.senha - A senha do novo usuário (obrigatório).
-                 * @param {string} data.email - O endereço de e-mail do novo usuário (obrigatório).
-                 * @param {number} data.ativo - O status de ativação do usuário (opcional, padrão: 1).
-                 * @param {number} data.id_grupo - O ID do grupo do usuário (opcional, padrão: 3).
-                 * @param {string} data.primeiro_nome - O primeiro nome do usuário (opcional).
-                 * @param {string} data.ultimo_nome - O sobrenome do usuário (opcional).
-                 * @param {number} data.id_plano - O ID do plano do usuário (opcional).
-                 * @param {number} data.credito - O crédito do usuário (opcional).
-                 * @param {number} data.limite_chamadas - O limite de chamadas do usuário (opcional).
-                 * @returns {Promise} - Uma Promise que resolve com o resultado da consulta ao banco de dados.
-                 * @throws {Error} - Se os argumentos obrigatórios não forem fornecidos (usuario, senha, email).
-                */
                 this._ExpectedArgs(data, ['usuario', 'senha', 'email'], "AND")
                 let payload = {
                     createUser: 1, // Fixo
@@ -634,12 +233,6 @@ class MagnusBilling {
                 return await this.query(payload);
             },
             find: async (filters) => {
-                /**
-                 * Encontra usuários com base nos filtros fornecidos.
-                 * Caso não seja repassado um filtro, obtém TODOS os "clients.users" do sistema.
-                 * @param {Object} filters - Os filtros para a consulta (opcional).
-                 * @returns {Promise} - Uma Promise que resolve com os resultados da consulta ao banco de dados.
-                */
                 let module = 'user';
                 this.interpretFilters(filters);
                 let r = await this.read(module);
@@ -648,14 +241,6 @@ class MagnusBilling {
                 return r
             },
             delete: async (data) => {
-                /**
-                 * Exclui um usuário com base no ID fornecido ou no filtro especificado.
-                 * @param {Object} data - Os dados necessários para excluir o usuário.
-                 * @param {number} data.id - O ID do usuário a ser excluído (ou 0 se nenhum ID for fornecido).
-                 * @param {string} data.filtro - O filtro para encontrar o usuário a ser excluído (opcional).
-                 * @returns {Promise} - Uma Promise que resolve com o resultado da exclusão do usuário.
-                 * @throws {Error} - Se ambos id e filtro forem fornecidos, ou se nenhum deles for fornecido.
-                */
                 this._ExpectedArgs(data, ['id', 'id_filtro'], "XOR");
                 data.id = data.id_filtro ? await this.clients.users.fGetId(data.id_filtro) : data.id; // Se passou filtro, uso. Se não, uso ID. Garanto que não tem ambos através do ExpectedArgs:XOR
 
@@ -663,22 +248,6 @@ class MagnusBilling {
                 return await this.destroy(module, data.id); // Lembrando, o ID esperado aqui é o ID interno, e não o número do usuario!
             },
             edit: async (data) => {
-                /**
-                 * Edita um usuário com base no ID fornecido ou no filtro especificado.
-                 * @param {Object} data - Os dados do usuário a serem editados.
-                 * @param {number} data.id - O ID do usuário a ser editado (ou 0 se nenhum ID for fornecido).
-                 * @param {string} data.filtro - O filtro para encontrar o usuário a ser editado (opcional).
-                 * @param {string} data.usuario - O novo nome de usuário (opcional).
-                 * @param {string} data.senha - A nova senha (opcional).
-                 * @param {string} data.email - O novo endereço de e-mail (opcional).
-                 * @param {string} data.primeiro_nome - O novo primeiro nome (opcional).
-                 * @param {string} data.ultimo_nome - O novo sobrenome (opcional).
-                 * @param {number} data.id_plano - O novo ID do plano (opcional).
-                 * @param {number} data.credito - O novo crédito (opcional).
-                 * @param {number} data.limite_chamadas - O novo limite de chamadas (opcional).
-                 * @returns {Promise} - Uma Promise que resolve com o resultado da edição do usuário.
-                 * @throws {Error} - Se ambos id e filtro forem fornecidos, ou se nenhum deles for fornecido.
-                */
                 this._ExpectedArgs(data, ['id', 'id_filtro'], "XOR");
                 data.id = data.id_filtro ? await this.clients.users.fGetId(data.id_filtro) : data.id; // Se passou filtro, uso. Se não, uso ID. Garanto que não tem ambos através do ExpectedArgs:XOR
 
@@ -700,12 +269,6 @@ class MagnusBilling {
                 return await this.query(payload);
             },
             fGetId: async (filters) => {
-                /**
-                 * Obtém o ID de um usuário com base nos filtros fornecidos.
-                 * @param {Object} filters - Os filtros para encontrar o usuário.
-                 * @returns {number} - O ID do usuário encontrado.
-                 * @throws {FindError} - Se houver um erro ao encontrar o usuário.
-                */
                 try {
                     const ret = await this.clients.users.find(filters);
                     this.validateReturn(ret);
