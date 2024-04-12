@@ -3,19 +3,47 @@ const axios = require('axios');
 // Importante:
 // "/var/www/html/mbilling/protected/controllers/DidController.php +462" > adicionar um "s" no "$value[id]"
 
-const { isFloat } = require('./lib/Utils');
+const { isSet, isFloat, arrayHasKey } = require('./lib/utils');
 
-const { ENDPOINT_USER } = require('./lib/endpoints/user');
-const { ENDPOINT_SIP } = require('./lib/endpoints/sip');
+// User
+const { USER_ENDPOINT } = require('./lib/endpoints/clients/user')
+const { SIP_ENDPOINT } = require('./lib/endpoints/clients/sip')
+const { CALLONLINE_ENDPOINT } = require('./lib/endpoints/clients/callonline')
+const { CALLERID_ENDPOINT } = require('./lib/endpoints/clients/callerid')
+const { ATALINKSYS_ENDPOINT } = require('./lib/endpoints/clients/atalinksys')
+
+// Billing
+const { REFILL_ENDPOINT } = require('./lib/endpoints/billing/refill')
+
+// Dids
+const { DIDS_ENDPOINT } = require('./lib/endpoints/dids/dids')
+const { DIDDESTINATION_ENDPOINT } = require('./lib/endpoints/dids/diddestination')
+
+// Rates
+const { PREFIXES_ENDPOINT } = require('./lib/endpoints/rates/prefixes')
+const { PLANS_ENDPOINT } = require('./lib/endpoints/rates/plans')
+const { TARIFFS_ENDPOINT } = require('./lib/endpoints/rates/tariffs')
+const { OFFERS_ENDPOINT } = require('./lib/endpoints/rates/offers')
+
+// Routes
+const { TRUNKS_ENDPOINT } = require('./lib/endpoints/routes/trunks')
+const { PROVIDERS_ENDPOINT } = require('./lib/endpoints/routes/providers')
+const { TRUNKGROUPS_ENDPOINT } = require('./lib/endpoints/routes/trunkgroups')
+
+// Reports
+const { CDR_ENDPOINT } = require('./lib/endpoints/reports/cdr')
 
 class MagnusBilling {
-    constructor(api_key, api_secret, public_url) {
+    constructor(api_key, api_secret, public_url, debug = 3) {
         this.api_key = api_key;
         this.api_secret = api_secret;
         this.public_url = public_url;
+        this.debug = debug;
         this.filter = [];
+        this.log_tag = "";
+        this.echoResponse = false;
 
-        this._mappingSinaisOperacao = {
+        this.signalToLetter = {
             '^': 'st',   // starts with   | começa com
             '$': 'ed',   // ends with     | termina com
             '~=': 'ct',  // contains      | contém
@@ -24,35 +52,680 @@ class MagnusBilling {
             '<': 'lt',   // less than     | menor que
             '>': 'gt',   // greater than  | maior que
         }
-        this._validSinaisOperacao = ['st', 'ed', 'ct', 'eq', 'lt', 'gt']
-          
+
+        this.validSignals = ['st', 'ed', 'ct', 'eq', 'lt', 'gt']
+
     }
 
+    clients = {
+        users: USER_ENDPOINT(this),
+        sipusers: SIP_ENDPOINT(this),
+        callsonline: CALLONLINE_ENDPOINT(this),
+        callerid: CALLERID_ENDPOINT(this),
+        atalinksys: ATALINKSYS_ENDPOINT(this), // unstable
+        //Restricted Number // TODO
+        //IAX // TODO
+        //User History // TODO
+    }
+    billing = {
+        refill: REFILL_ENDPOINT(this),
+        //paymentmethods: {} // TODO
+        //voucher: {} // TODO
+        //refillproviders: {} // TODO
+    }
+    dids = {
+        dids: DIDS_ENDPOINT(this),
+        diddestination: DIDDESTINATION_ENDPOINT(this), // arrumar o edit type
+        // didsuse: {},
+        // ivrs: {},
+        // queues: {},
+        // queuesmembers: {},
+        // queuedashboard: {},
+        // holidays: {},
+        // didhistory: {},
+    }
+    rates = {
+        plans: PLANS_ENDPOINT(this),
+        tariffs: TARIFFS_ENDPOINT(this),
+        prefixes: PREFIXES_ENDPOINT(this),
+        // usercustomrates: {},
+        offers: OFFERS_ENDPOINT(this),
+        // offercdr: {},
+        // offeruse: {},
+    }
+    reports = {
+        cdr: CDR_ENDPOINT(this),
+        // cdrfailed: {},
+        // summaryperday: {},
+        // summarydayuser: {},
+        // summarydaytrunk: {},
+        // summarydayagent: {},
+        // summarypermonth: {},
+        // summarymonthuser: {},
+        // summarymonthtrunk: {},
+        // summaryperuser: {},
+        // summarypertrunk: {},
+        // callarchive: {},
+        // summarymonthdid: {},
+    }
+    routes = {
+        providers: PROVIDERS_ENDPOINT(this),
+        trunks: TRUNKS_ENDPOINT(this),
+        trunkgroups: TRUNKGROUPS_ENDPOINT(this),
+        // providerrates: {},
+        // servers: {},
+        // trunkerrors: {},
+    }
+    settings = {
+        // menus: {},
+        // groupusers: {},
+        // configuration: {},
+        // emailstemplates: {},
+        // logusers: {},
+        // smtp: {},
+        // failtoban: {},
+        // api: {},
+        // grouptoadmins: {},
+        // backup: {},
+        // alarms: {},
+    }
+
+    // UTILITÁRIOS // ---------------------------------------------------------------------------------------------------
+
+    // Função de log com nível.
+    log = {
+        trace: (message) => {
+            if (this.debug >= 6) { console.log(`[\x1b[36mTRACE\x1b[0m] \x1b[36m${this.log_tag}${message}\x1b[0m`) }
+        },
+        debug: (message) => {
+            if (this.debug >= 5) { console.log(`[\x1b[34mDEBUG\x1b[0m] \x1b[34m${this.log_tag}${message}\x1b[0m`) }
+        },
+        info: (message) => {
+            if (this.debug >= 4) { console.log(`[\x1b[32mINFO \x1b[0m] \x1b[32m${this.log_tag}${message}\x1b[0m`) }
+        },
+        warn: (message) => {
+            if (this.debug >= 3) { console.log(`[\x1b[33mWARN \x1b[0m] \x1b[33m${this.log_tag}${message}\x1b[0m`) }
+        },
+        error: (message) => {
+            if (this.debug >= 2) { console.log(`[\x1b[31mERROR\x1b[0m] \x1b[31m${this.log_tag}${message}\x1b[0m`) }
+        },
+        fatal: (message) => {
+            if (this.debug >= 1) { console.log(`[\x1b[31mFATAL\x1b[0m] \x1b[31m${this.log_tag}${message}\x1b[0m`) }
+        },
+        setTag: (tag) => { this.log_tag = tag; return this.log },
+        clearTag: (tag) => { this.log_tag = ""; return this.log }
+    }
+
+    // Recebe dois objetos
+    // arr1: { test: {required: true, max: 5 } }
+    // arr2: { test: {default: 5} }
+    // e mescla-os em um:
+    // res: { test: {required: true, max: 5, default: 5} }
+    // Necessário para mesclar USER_RULES com API_RULES (em específico, nos método save (add) )
+    mergeRules = (rule1, rule2) => {
+        if (typeof rule1 !== 'object' || typeof rule2 !== 'object') {
+            throw new Error('Ambos os parâmetros devem ser objetos');
+        }
+    
+        if (Object.keys(rule1).length === 0) return rule2;
+        if (Object.keys(rule2).length === 0) return rule1;
+    
+        const result = {};
+    
+        for (const key of Object.keys(rule1).concat(Object.keys(rule2))) {
+            const props1 = rule1[key] || {};
+            const props2 = rule2[key] || {};
+    
+            const mergedProps = { ...props1, ...props2 };
+            const propsKeys = Object.keys(mergedProps);
+    
+            for (const propKey of propsKeys) {
+                if (props1.hasOwnProperty(propKey) && props2.hasOwnProperty(propKey) && props1[propKey] !== props2[propKey]) {
+                    throw new Error(`Conflito encontrado para a propriedade '${propKey}' na chave '${key}'`);
+                }
+            }
+    
+            result[key] = mergedProps;
+        }
+    
+        return result;
+    };
+
+    async formatApiRequirement(data, outputType) {
+        // Processamento mais bruto, utilizado por alguns métodos
+        function CrudeProcessArgumentRequirements(data) {
+            const result = {
+                expectedArguments: [],
+                integerOnlyArguments: [],
+                argumentsLength: []
+            };
+
+            data.forEach(item => {
+                if (Array.isArray(item)) {
+                    if (item[1] === 'required') {
+                        result.expectedArguments.push({ arguments: item[0].split(',').map(arg => arg.trim()), logic: 'AND' });
+                    }
+                } else {
+                    for (const key in item) {
+                        if (key === 'integerOnly' && item[key]) {
+                            result.integerOnlyArguments.push(...item[0].split(',').map(arg => arg.trim()));
+                        } else if (key === 'max' && item.hasOwnProperty(key)) {
+                            const args = Object.entries(item)[0][1].split(',').map(arg => arg.trim());
+                            result.argumentsLength.push({ arguments: args, max: item.max, min: item.min });
+                        }
+                    }
+                }
+            });
+
+            return result
+        }
+
+        // Utilizando o método bruto, refina o retorno para algo mais simplificado
+        function SimplifyArgumentRequirements(data) {
+            const result = {};
+
+            // Pegando os argumentos OBRIGATÓRIOS
+            if (data.expectedArguments && data.expectedArguments.length > 0) {
+                data.expectedArguments.forEach(item => {
+                    if (item.logic === "AND") {
+                        item.arguments.forEach(arg => {
+                            // Inicializando result[arg] somente se tiver vazio
+                            if (!result[arg]) {
+                                result[arg] = {}
+                            }
+                            result[arg].required = true;
+                        });
+                    }
+                });
+            }
+
+            // Pegando os argumentos INTEGER ONLY
+            if (data.integerOnlyArguments && data.integerOnlyArguments.length > 0) {
+                data.integerOnlyArguments.forEach(arg => {
+                    // Inicializando result[arg] somente se estiver vazio
+                    if (!result[arg]) {
+                        result[arg] = {}
+                    }
+                    result[arg].numerical = true;
+                    result[arg].integerOnly = true;
+                });
+            }
+
+            // Pegando o TAMANHO DOS ARGUMENTOS
+            data.argumentsLength.forEach(item => {
+                item.arguments.forEach(arg => {
+                    // Verificando se result[arg] existe antes de atribuir
+                    if (!result[arg]) {
+                        result[arg] = {};
+                    }
+                    // Convertendo os valores de max e min para inteiros e atribuindo a maxLength e minLength
+                    result[arg].maxLength = parseInt(item.max);
+                    if (item.min !== undefined) {
+                        result[arg].minLength = parseInt(item.min);
+                    }
+                });
+            });
+            return result;
+        }
+
+        // Usando o simplificado, gera uma tabela markdown.
+        function CreateMarkdownFromSimplifiedArgumentRequirements(data) {
+
+            // Gera a descrição da tabela Markdown
+            function getDescription(argument) {
+                let description = "";
+
+                if (argument.required) {
+                    description += "Required";
+                }
+                if (argument.maxLength) {
+                    if (description !== "") description += ", ";
+                    description += `Max Length: ${argument.maxLength}`;
+                }
+                if (argument.minLength) {
+                    if (description !== "") description += ", ";
+                    description += `Min Length: ${argument.minLength}`;
+                }
+                if (argument.numerical && argument.integerOnly) {
+                    if (description !== "") description += ", ";
+                    description += "Numerical (Integer Only)";
+                }
+
+                return description;
+            }
+
+            let markdownTable = "Key | Description\n";
+            markdownTable += "--- | ---\n";
+
+            for (const key in data) {
+                const description = getDescription(data[key]);
+                markdownTable += `${key} | ${description}\n`;
+            }
+
+            return markdownTable;
+        }
+
+        let raw
+        let crude
+        let simplified
+        switch (outputType) {
+            case 'raw':
+                raw = data;
+                return raw;
+            case 'crude':
+                raw = data;
+                return CrudeProcessArgumentRequirements(raw);
+            case 'simple':
+                raw = data;
+                crude = CrudeProcessArgumentRequirements(raw);
+                return SimplifyArgumentRequirements(crude);
+            case 'table':
+            case 'markdowntable':
+                raw = data;
+                crude = CrudeProcessArgumentRequirements(raw);
+                simplified = SimplifyArgumentRequirements(crude);
+                return CreateMarkdownFromSimplifiedArgumentRequirements(simplified);
+            default:
+                if (!outputType) {
+                    throw new Error('Repasse o tipo de output!')
+                } else {
+                    throw new Error('Tipo de output não aceito!')
+                }
+        }
+    }
+
+    // ENDPOINT PREPARATION // ------------------------------------------------------------------------------------------------------------
+
+    // Função que prepara as configurações de um endpoint
+    async generateEndpoint(action, module, USER_RULES, SKIP_API = false) {
+        let API_RULES = {}
+        if (action === 'save' &&  !SKIP_API) { // módulo desgraçado!
+            this.log.info(`- Consultando módulo "${module}" na API getFields...`)
+            try {
+                // Preparando os requisitos PELA API DO MAGNUS
+                API_RULES = await this.getFields(module)
+                    .then(res => this.formatApiRequirement(res, 'simple'));
+            } catch (err) {
+                throw err;
+            }
+            this.log.clearTag().setTag('[generateEndpoint] ') // desgraça (a requisição acima dá replace na minha tag, tenho que setá-la denovo)
+            this.log.debug('Valores retornados pela pesquisa de requisitos na API:')
+            this.log.debug(JSON.stringify(API_RULES))
+        } else {
+            this.log.info(`- O módulo "${module}" não foi consultado na API getFields.`)
+        }
+
+
+        // Mesclando a configuração da API com a configuração do endpoint segundo o usuário
+        const argumentRules = this.mergeRules(USER_RULES, API_RULES)
+        const ENDPOINT_CONFIG = {
+            action,
+            module,
+            argumentRules
+        }
+
+        this.log.debug('- Generated configs:')
+        this.log.debug(JSON.stringify(ENDPOINT_CONFIG))
+
+        // Criando a lógica do endpoint com as configurações geradas
+        const endpoint = this.buildEndpointHandler(ENDPOINT_CONFIG);
+        return endpoint;
+    }
+
+    // Função que, a partir da configuração do endpoint, constrói-o e executa a ação de fato
+    buildEndpointHandler(parameters) {
+        return async (data) => {
+            this.log.clearTag().setTag(`[buildEndpointHandler] `);
+            this.log.info(`<@> Gerando endpoint "${parameters.module}/${parameters.action}" <@>`)
+            this.log.trace(`Data array: ${JSON.stringify(data)}`);
+
+            // Adicionando ARGUMENTS para Payload
+            let payload_additions;
+            payload_additions = this.interpretArguments(data, parameters);
+
+            // Adicionando DATA para Payload
+            let payload = Object.assign(data, payload_additions);
+            payload.module = parameters.module;
+            payload.action = parameters.action;
+
+            this.log.info("Payload gerada!");
+            this.log.debug(JSON.stringify(payload));
+            this.log.trace("- Additions: " + JSON.stringify(payload_additions));
+
+            this.log.info(" <@> CHECAGEM DE ARGUMENTOS OK <@> ");
+
+            if (parameters.action === 'read') {
+                this.interpretFilters(data.filtro)
+                payload.page = parameters.page ?? 1
+                payload.start === 1 ? 0 : (parameters.page - 1) * 25
+                payload.limit = 25
+                payload.filter = JSON.stringify(this.filter)
+                let ret = await this.query(payload)
+                this.clearFilter()
+                return ret
+            } else if (parameters.action === 'destroy') {
+                payload.multi = true
+                return await this.query(payload)
+            } else {
+                return await this.query(payload);
+            }
+        }
+    }
+
+    interpretArguments(data, parameters) {
+        // TODO:
+        // Falar os erros todos de uma vez, e não um argumento por vez.
+        // Se tiver 3 argumentos errados, o usuário terá que rodar 3 vezes, e corrigir um a 1.
+        // Quero que, se tiver 3 argumentos errados, informe os 3 argumentos que estão errados desde a primeira "rodada".
+
+        let payload = {...data};
+
+        console.log(parameters.argumentRules)
+        for (const argument in parameters.argumentRules) {
+            const rule = parameters.argumentRules[argument];
+            // argument : Argumento que estou validando
+            // rule     : Regras do argumento que estou validando.
+
+            // primeiro valido os fixos e defaults, para acrescentá-los à data
+            // this.log.info(`Verificando regras do argumento ${argument}...`)
+
+            // Explicação de tags dos argumentos.
+            // required: bool > é um argumento obrigatório?
+            // default: any > valor padrão do argumento. se for repassado em data, será sobreescrito
+            // fixed: any > valor padrão do argumento. se for repassado em data, apresentará ERRO
+            // numeric: bool > é um argumento numérico (float/integer)?
+            // integerOnly: bool > é um argumento somente inteiro (integer)?
+            // minLength: int > quantidade mínima de tamanho de caracteres do argumento
+            // maxLength: int > quantidade máxima de tamanho de caracteres do argumento
+            // prohibited: bool > se o argumento NÃO PODE ser repassado
+
+
+            // Validando PROHIBITED (se existir em data, dar erro. else, else, nada.)
+            if (isSet(rule.prohibited)) {
+                if (payload[argument]) {
+                    this.log.error(`[${argument}] - Prohibited: Argumento ${argument} proibido!`)
+                    throw new Error("Argumento proibido.").stack
+                } else {
+                    payload[argument] = rule.fixed
+                    this.log.trace(`[${argument}] - PROHIBITED: Argumento não é proibido..`)
+                }
+            }
+
+            // Validando FIXED (se existir em data, dar erro. else, acrescentar na payload)
+            if (isSet(rule.fixed)) {
+                if (payload[argument]) {
+                    this.log.error(`[${argument}] - FIXED: Argumento ${argument} proibido! Não repasse argumentos fixos.`)
+                    throw new Error("Não repasse argumentos fixos.").stack
+                } else {
+                    payload[argument] = rule.fixed
+                    this.log.trace(`[${argument}] - FIXED: Adicionado à payload como "${rule.fixed}".`)
+                }
+            }
+
+            // Validando DEFAULT (se ja existir em data, pular. else, acrescentar na payload)
+            if (isSet(rule.default)) {
+                if (!payload[argument]) { // Se não foi repassado pelo usuário, adiciono à payload.
+                    payload[argument] = rule.default
+                    this.log.trace(`[${argument}] - DEFAULT: Adicionado à payload como "${rule.default}".`)
+                } else {
+                    this.log.trace(`[${argument}] - DEFAULT: Está presente, permanecerá como "${payload[argument]}".`)
+                }
+            }
+
+            // Validando REQUIRED (se não existir em data, **E** este argumento NÃO CONTER A REGRA fixed **OU** default, da erro)
+            if (rule.required) {
+                if (!payload[argument]) {
+                    this.log.error(`[${argument}] - REQUIRED: Argumento obrigatório: ${argument}`)
+                    throw new Error(`Argumento obrigatório: ${argument}`)
+                } else {
+                    this.log.trace(`[${argument}] - REQUIRED: Está presente.`)
+                }
+            }
+
+            // Validando MAX LENGTH (se o tamanho do argumento em data for maior que essa regra)
+            if (rule.maxLength) {
+                if (payload[argument]) {
+                    let field = String(payload[argument])
+                    if (field.length > rule.maxLength) {
+                        this.log.error(`[${argument}] - MAXLENGTH: Excedeu o limite de caracteres!`)
+                        throw new Error(`Argumento "${argument}" excede o limite de "${rule.maxLength}" caracteres.`)
+                    } else {
+                        this.log.trace(`[${argument}] - MAXLENGTH: Não excede o limite de caracteres.`)
+                    }
+                } else {
+                    this.log.trace(`[${argument}] - MAXLENGTH: Argumento não está presente.`)
+                }
+            }
+
+            // Validando MIN LENGTH (se o tamanho do argumento em data for menor que essa regra)
+            if (rule.minLength) {
+                this.log.debug(`${argument} : Validando regra MINLENGTH`)
+                this.log.trace("- Regra existe.")
+                // verificar tanto em data quanto em payload
+            }
+
+        }
+
+        return payload
+    }
+
+    checkExpectedArguments(data, expectedArguments) {
+        expectedArguments.forEach(exp => {
+            // x, y, NOR
+            // a, b, c, AND
+            this.validateLogic(data, exp.arguments, exp.logic)
+        });
+    }
+
+    validateDefaultArguments(data, defaultArguments) {
+        let ret = {}
+
+        // Vejo a lista de argumentos que precisam de um valor padrão
+        defaultArguments.forEach(def => {
+
+            // Se o argumento não foi repassado pelo usuário, acrescento-o á lista de argumentos à adicionar na payload
+            if (!arrayHasKey(data, def.argument)) {
+                ret[def.argument] = def.value
+            }
+        })
+        // Envio os argumentos que devem ser acrescentados à payload
+        return ret
+    }
+
+    validateFixedArguments(data, fixedArguments) {
+        let ret = {}
+        let FORBIDDEN_ARGS = []
+
+        // Vejo a lista de argumentos proibidos
+        fixedArguments.forEach(fix => {
+
+            // Se essa chave existir, adiciono à lista de argumentos que apontaram problema
+            if (arrayHasKey(data, fix.argument)) {
+                FORBIDDEN_ARGS.push(fix.argument)
+            } else {
+                ret[fix.argument] = fix.value
+            }
+        })
+
+        // Se foi identificado algum argumento proibido (key "fix.argument" existe em "data"), informo erro.
+        if (FORBIDDEN_ARGS.length > 0) {
+            throw new Error(`Não repasse argumentos fixos: ${FORBIDDEN_ARGS.join(', ')}`)
+        }
+
+        // Envio os argumentos que devem ser acrescentados à payload
+        return ret
+    }
+
+    validateLogic(data, expectedArguments, logic = "AND") {
+        let MISSING_ARGS
+        let PRESENT_ARGS
+        let FORBIDDEN_ARGS
+        this.log.trace(`[ValidateLogic] - Lógica: ${logic}`)
+        this.log.trace(`[ValidateLogic] Argumentos: ${expectedArguments.join(', ')}`)
+        switch (logic) {
+            case 'AND':
+                MISSING_ARGS = expectedArguments.filter(arg => !(arg in data))
+                if (MISSING_ARGS.length > 0) {
+                    throw new Error(`Argumentos necessários: ${MISSING_ARGS.join(', ')}`).stack;
+                }
+                break;
+            case 'OR':
+                if (!expectedArguments.some(arg => arg in data)) {
+                    throw new Error(`Argumentos necessários: ${expectedArguments.join(', ')}`).stack;
+                }
+                break;
+            case 'NAND':
+                FORBIDDEN_ARGS = expectedArguments.filter(arg => arg in data).length;
+                if (FORBIDDEN_ARGS === expectedArguments.length) {
+                    throw new Error(`Conflito de argumentos: ${expectedArguments.join(', ')}`).stack;
+                }
+                break;
+            case 'NOR':
+                FORBIDDEN_ARGS = expectedArguments.filter(arg => arg in data);
+                if (FORBIDDEN_ARGS.length > 0) {
+                    throw new Error(`Argumentos não permitidos: ${FORBIDDEN_ARGS.join(', ')}`).stack;
+                }
+                break;
+            case 'XOR':
+                PRESENT_ARGS = expectedArguments.filter(arg => arg in data).length;
+                if (PRESENT_ARGS === 0) {
+                    throw new Error(`Ao menos um argumento necessário: ${expectedArguments.join(', ')}`).stack;
+                }
+                if (!(PRESENT_ARGS === 1)) {
+                    throw new Error(`Apenas um dos argumentos é necessário: ${expectedArguments.join(', ')}`).stack;
+                }
+                break;
+            case 'XNOR':
+                PRESENT_ARGS = expectedArguments.filter(arg => arg in data).length;
+                if (!((PRESENT_ARGS === 0) || (PRESENT_ARGS === expectedArguments.length))) {
+                    throw new Error(`Todos ou nenhum dos argumentos são necessários: ${expectedArguments.join(', ')}`).stack;
+                }
+                break;
+            default:
+                throw new Error(`Tipo de lógica inválida: ${logic}`)
+                ;
+        }
+    }
+
+    validateArgumentsLength(data, argumentsLength) {
+        let BAD_ARGS_MAX = []
+        let BAD_ARGS_MIN = []
+        for (const item of argumentsLength) {
+            const { arguments: args, max } = item; // Renomeando para evitar conflito com a palavra reservada 'arguments'
+            for (const key of args) {
+                if (key in data) {
+
+                    // Stringi-fico o valor, pois não existe value.length de número por exemplo.
+                    // E se não for uma string, vai me causar problemas.
+                    // TODO: refatorar isso?
+                    // https://stackoverflow.com/questions/10952615/how-can-i-find-the-length-of-a-number
+                    const value = String(data[key]); // stringi-fico, pois só quero saber o tamanho. importante notar que se o valor for um float, o PONTO será contado como um caractere a mais.
+                    if (typeof value !== 'string') {
+                        this.log.warning("ARGUMENTS LENGTH: O tamanho")
+                    }
+                    if (typeof value !== 'string' || value.length > max) {
+                        BAD_ARGS_MAX.push(`${key}:${max}`)
+                    }
+                }
+            }
+        }
+
+        // preguiça de corrigir isso pra exibir os dois erros de uma vez só. primeiro vai avisar max, depois vai avisar min.
+        if (BAD_ARGS_MAX.length > 0) {
+            throw new Error(`Os seguintes valores excedem o limite de caractere: ${BAD_ARGS_MAX.join(', ')}`).stack
+        }
+
+        if (BAD_ARGS_MIN.length > 0) {
+            throw new Error(`Os seguintes valores não batem o limite mínimo de caractere: ${BAD_ARGS_MIN.join(', ')}`).stack
+        }
+    }
+
+    validateIntegerOnlyArguments(data, integerOnlyArguments) {
+        let BAD_ARGS = []
+        for (const key in data) {
+            if (integerOnlyArguments.includes(key)) {
+                const value = data[key];
+                this.log.trace('[ValidateInteger] - Checando argumento: ' + key)
+                this.log.trace('[ValidateInteger] Valor: ' + value)
+                this.log.trace('[ValidateInteger] Tipo: ' + typeof (value))
+                if (!Number.isInteger(value)) {
+                    BAD_ARGS.push(key)
+                }
+                this.log.trace('[ValidateInteger] Bad Arguments: ' + BAD_ARGS)
+            }
+        }
+
+        if (BAD_ARGS.length > 0) {
+            throw new Error(`Os seguintes argumentos precisam ser inteiros: ${BAD_ARGS.join(', ')}`).stack;
+        }
+    }
+
+    // API // ------------------------------------------------------------------------------------------------------------
+
     async query(req = {}) {
+        // console.log(req)
+
+        let payload
         let { module, action } = req;
         module = module ?? '';
         action = action ?? '';
+        this.log.clearTag().setTag(`[query] [${module}/${action}] `)
+
+        // Se for um delete, eu vejo se tá passando uma LISTA no ID. 
+        // Caso seja lista eu preciso editar o formato da payload para permitir apagar vários em uma única request.
+        if (action === 'destroy') {
+            this.log.info('<#> É uma requisição DESTROY! <#>')
+            if (Array.isArray(req.id)) {
+                this.log.info('<#> Está passando multiplos IDs! Reformulando payload... <#>')
+                this.log.trace(`- Payload antiga : ${JSON.stringify(req)}`)
+                // TODO: deixar essa merda mais bonita. por enquanto NAO ENCOSTA, ESTÁ FUNCIONANDO.
+                payload = { ...req }
+                delete payload.id
+                delete payload.multi
+                delete payload.module
+                req.id.forEach(id => {
+                    payload.rows = JSON.stringify(req.id.map(id => ({ id })));
+                });
+                req = payload
+                this.log.trace(`- Payload nova   : ${JSON.stringify(req)}`)
+            }
+        }
 
         // Gerar um nonce para evitar problemas com sistemas de 32 bits
         const mt = new Date().getTime().toString();
         req.nonce = mt.slice(-10) + mt.substr(2, 6);
+        this.log.info("Gerado \"nonce\".")
+        this.log.debug('- nonce: ' + req.nonce)
 
         // Gerar a string de dados POST
         const post_data = new URLSearchParams(req).toString();
-        const sign = require('crypto').createHmac('sha512', this.api_secret).update(post_data).digest('hex');
+        this.log.info("Gerado \"post_data\".")
+        this.log.debug('- post_data: ' + post_data)
+
+        // Gerando a assinatura com a API KEY
+        this.log.trace('Gerando sign...')
+        const _HMAC512 = require('crypto').createHmac('sha512', this.api_secret);
+        const _CONTENT_AWARE_HMAC512 = _HMAC512.update(post_data);
+        const _HEX_CONTENT_AWARE_HMAC512 = _CONTENT_AWARE_HMAC512.digest('hex');
+        const sign = _HEX_CONTENT_AWARE_HMAC512
+        this.log.trace(`-     API Secret        : ${this.api_secret}`);
+        this.log.trace(`-        HMAC512        : ${_HMAC512}`);
+        this.log.trace(`-     CA HMAC512        : ${_CONTENT_AWARE_HMAC512}`);
+        this.log.trace(`- HEX CA HMAC512 (Sign) : ${_HEX_CONTENT_AWARE_HMAC512}`)
+        this.log.info("Gerado \"sign\".")
+        this.log.debug('- sign: ' + sign)
 
         // Gerar os cabeçalhos extras
         const headers = {
             'Key': this.api_key,
             'Sign': sign
         };
+        this.log.info("Gerado \"headers\".")
+        this.log.debug('- headers: ' + JSON.stringify(headers))
 
-        console.log(`[${module}/${action}] Sent: ${JSON.stringify(req)}`)
-
-        // console.log(`Sending request to ${this.public_url}/index.php/${module}/${action}`)
-        // console.log(`Data: ${JSON.stringify(post_data)}`)
-        // console.log(`Headers: ${JSON.stringify(headers)}`)
-        // console.log(`Request: ${JSON.stringify(req)}`)
+        this.log.info(`<@> Enviando requisição para "${this.public_url}/index.php/${module}/${action}"... <@>`)
+        this.log.debug(`- Headers: ${JSON.stringify(headers)}`)
+        this.log.debug(`- Body   : ${JSON.stringify(post_data)}`)
 
         try {
             const response = await axios.post(`${this.public_url}/index.php/${module}/${action}`, post_data, {
@@ -62,43 +735,25 @@ class MagnusBilling {
                 }
             });
 
-            console.log(`[${module}/${action}] Response: ${JSON.stringify(response.data)}`)
+            this.log.info("<@> Resposta recebida! <@>")
+            if (this.echoResponse) {
+                console.log(response.data)
+            }
             return response.data;
         } catch (error) {
-            console.log(`[${module}/${action}] ${JSON.stringify(error)}`)
-            console.log(`[${module}/${action}] [${error.status}/${error.code}] --> ${error.config.method}:${error.config.url} [${error.config.data}]`)
-            // throw new Error(`Axios error: ${error.message}`).stack;
+            this.log.info(`${error.config.method}:${error.config.url} [${error.config.data}]`)
+            this.log.error(JSON.stringify(error))
             throw new Error(error).stack
         }
     }
 
-    async create(module, data = {}) {
-        data.module = module;
-        data.action = 'save';
-        data.id = 0;
 
-        return await this.query(data);
-    }
 
-    async createDID(data) {
-        return await this.create('did', data)
-    }
 
-    async update(module, id, data) {
-        data.module = module;
-        data.action = 'save';
-        data.id = id;
 
-        return await this.query(data);
-    }
 
-    async destroy(module, id) {
-        return await this.query({
-            module: module,
-            action: 'destroy',
-            id: id
-        });
-    }
+
+
 
     async read(module, page = 1, action = 'read') {
         return await this.query({
@@ -108,16 +763,6 @@ class MagnusBilling {
             start: page === 1 ? 0 : (page - 1) * 25,
             limit: 25,
             filter: JSON.stringify(this.filter)
-        });
-    }
-
-    async buyDID(id_did, id_user) {
-        // ???? action:buy ?
-        return await this.query({
-            module: 'did',
-            action: 'buy',
-            id: id_did,
-            id_user: id_user
         });
     }
 
@@ -139,28 +784,18 @@ class MagnusBilling {
             username: username,
             getMenu: 1
         });
-    }   
-
-// TESTNGIN!!!!!!!!!! ///////////////////////////////////////////////////////////////////////////////////
-
-    // de-facto API
-    test = {
-        user: ENDPOINT_USER(this),
-        sip: ENDPOINT_SIP(this),
-    };
-
-// TESTNGIN!!!!!!!!!! ///////////////////////////////////////////////////////////////////////////////////
+    }
 
     clearFilter() {
         this.filter = [];
     }
 
     setFilter(field, value, comparison = 'st', type = 'string') {
-        // console.log('inside setfilter')
-        // console.log('field      : ' + field)
-        // console.log('value      : ' + value)
-        // console.log('comparison : ' + comparison)
-        // console.log('type       : ' + type)
+        this.log.trace(`Campo: ${field}`)
+        this.log.trace(`Valor: ${value}`)
+        this.log.trace(`Comp.: ${comparison}`)
+        this.log.trace(`Tipo : ${type}`)
+
         this.filter.push({
             type: type,
             field: field,
@@ -177,12 +812,12 @@ class MagnusBilling {
                 let [campo, operador, valor, tipo] = filtro;
 
                 // '=' -> 'eq'
-                const operadorInterpretado = this._mappingSinaisOperacao[operador] || operador;
+                const operadorInterpretado = this.signalToLetter[operador] || operador;
 
-                if (!this._validSinaisOperacao.includes(operadorInterpretado)) {
+                if (!this.validSignals.includes(operadorInterpretado)) {
                     throw new InvalidOperator(`Operador comparativo "${operadorInterpretado}" inválido. Seu filtro está correto?`).stack
                 }
-                
+
                 // Confirmando
                 // console.log('Campo    : ' + campo + ' | Tipo: ' + typeof(campo));
                 // console.log('Operador : ' + operadorInterpretado + ' | Tipo: ' + typeof(operadorInterpretado));
@@ -192,910 +827,6 @@ class MagnusBilling {
                 this.setFilter(campo, valor, operadorInterpretado, tipo);
 
             });
-        }
-    }
-
-    validateReturn(ret) {
-        if (!ret) {
-            throw new ValidatingError(`Não houve retorno para a requisição`).stack
-        } else if (!ret.count) {
-            throw new ValidatingError(`Retorno com estrutura inesperada: ${JSON.stringify(ret)}`).stack
-        } else if (ret.count >= 1 && (ret.rows != null && !ret.rows)) {
-            throw new ValidatingError(`Retorno com estrutura inesperada: ${JSON.stringify(ret)}`).stack
-        }
-        return ret
-    }
-
-    opcional(chave, valor) {
-        return valor !== undefined ? { [chave]: valor } : {};
-    }
-
-    // API Simplificada
-    clients = {
-        users: { // DONE
-            new: async (data) => {
-                this._ExpectedArgs(data, ['usuario', 'senha', 'email'], "AND")
-                let payload = {
-                    createUser: 1, // Fixo
-                    id: 0, // Fixo
-                    username: data.usuario, // Obrigatório
-                    password: data.senha, // Obrigatório
-                    email: data.email, // Obrigatório
-                    active: data.ativo ?? 1, // Default: ativo (pois estou CRIANDO um usuário)
-                    id_group: data.id_grupo ?? 3, // Default: Cliente
-                    ...this.opcional('prefix_local', data.prefix_local), // teste
-                    ...this.opcional('firstname', data.primeiro_nome), // Opcional
-                    ...this.opcional('lastname', data.ultimo_nome), // Opcional
-                    ...this.opcional('id_plan', data.id_plano), // Opcional
-                    ...this.opcional('credit', data.credito), // Opcional
-                    ...this.opcional('calllimit', data.limite_chamadas), // Opcional
-                }
-                return await this.query(payload);
-            },
-            find: async (filters) => {
-                let module = 'user';
-                this.interpretFilters(filters);
-                let r = await this.read(module);
-
-                this.clearFilter()
-                return r
-            },
-            delete: async (data) => {
-                this._ExpectedArgs(data, ['id', 'id_filtro'], "XOR");
-                data.id = data.id_filtro ? await this.clients.users.fGetId(data.id_filtro) : data.id; // Se passou filtro, uso. Se não, uso ID. Garanto que não tem ambos através do ExpectedArgs:XOR
-
-                let module = 'user';
-                return await this.destroy(module, data.id); // Lembrando, o ID esperado aqui é o ID interno, e não o número do usuario!
-            },
-            edit: async (data) => {
-                this._ExpectedArgs(data, ['id', 'id_filtro'], "XOR");
-                data.id = data.id_filtro ? await this.clients.users.fGetId(data.id_filtro) : data.id; // Se passou filtro, uso. Se não, uso ID. Garanto que não tem ambos através do ExpectedArgs:XOR
-
-                let module = 'user';
-                let action = 'save';
-                let payload = {
-                    module: module,
-                    action: action,
-                    id: data.id,
-                    ...this.opcional('username', data.usuario), // Opcional
-                    ...this.opcional('password', data.senha), // Opcional
-                    ...this.opcional('email', data.email), // Opcional
-                    ...this.opcional('firstname', data.primeiro_nome), // Opcional
-                    ...this.opcional('lastname', data.ultimo_nome), // Opcional
-                    ...this.opcional('id_plan', data.id_plano), // Opcional
-                    ...this.opcional('credit', data.credito), // Opcional
-                    ...this.opcional('calllimit', data.limite_chamadas), // Opcional
-                }
-                return await this.query(payload);
-            },
-            fGetId: async (filters) => {
-                try {
-                    const ret = await this.clients.users.find(filters);
-                    this.validateReturn(ret);
-
-                    if (parseInt(ret.count) !== 1) {
-                        throw (`Filtro "${filters}": ${ret.count} resultados.`);
-                    } else {
-                        const user = ret.rows[0];
-                        // console.log(`---> O ID desse usuário é: ${user.id}`);
-                        return user.id;
-                    }
-                } catch (err) {
-                    throw new FindError(`${err}`).stack;
-                }
-            }
-        },
-        sipUsers: { // DONE
-            new: async (data) => {
-                this._ExpectedArgs(data, ['defaultuser', 'secret'], "AND")
-                this._ExpectedArgs(data, ['id_user', 'id_user_filtro'], "XOR")
-
-                let module = 'sip'
-                let action = 'save'
-                let payload = {
-                    module: module, // Obrigatório
-                    action: action, // Obrigatório
-                    id: 0,          // Obrigatório
-                    id_user: data.id_user_filtro ? await this.clients.users.fGetId(data.id_user_filtro) : data.id_user, // Obrigatório, input
-                    defaultuser: data.defaultuser,              // Obrigatório, input
-                    secret: data.secret,                        // Obrigatório, input
-                    name: data.name ?? '',                      // Obrigatório
-                    callerid: data.callerid ?? '',              // Obrigatório
-                    disallow: data.disallow ?? 'all',           // Valor padrão
-                    allow: data.allow ?? 'g729,gsm,ulaw,alaw',  // Valor padrão
-                    host: data.host ?? 'dynamic',               // Valor padrão
-                    ...this.opcional('directmedia', data.directmedia),
-                    ...this.opcional('context', data.context),
-                    ...this.opcional('dtmfmode', data.dtmfmode),
-                    ...this.opcional('insecure', data.insecure),
-                    ...this.opcional('nat', data.nat),
-                    ...this.opcional('qualify', data.qualify),
-                    ...this.opcional('type', data.type),
-                    ...this.opcional('regseconds', data.regseconds),
-                    ...this.opcional('allowtransfer', data.allowtransfer),
-                    ...this.opcional('calllimit', data.calllimit),
-                    ...this.opcional('ringfalse', data.ringfalse),
-                    ...this.opcional('record_call', data.record_call),
-                    ...this.opcional('voicemail', data.voicemail),
-                    ...this.opcional('dial_timeout', data.dial_timeout),
-                    ...this.opcional('techprefix', data.techprefix),
-                    ...this.opcional('amd', data.amd),
-                    ...this.opcional('id_trunk_group', data.id_trunk_group),
-                    ...this.opcional('videosupport', data.videosupport),
-                    ...this.opcional('voicemail_password', data.voicemail_password),
-                    ...this.opcional('id_user', data.id_user),
-                    ...this.opcional('name', data.name),
-                    ...this.opcional('accountcode', data.accountcode),
-                    ...this.opcional('regexten', data.regexten),
-                    ...this.opcional('amaflags', data.amaflags),
-                    ...this.opcional('callgroup', data.callgroup),
-                    ...this.opcional('callerid', data.callerid),
-                    ...this.opcional('DEFAULTip', data.defaultip),
-                    ...this.opcional('fromuser', data.fromuser),
-                    ...this.opcional('fromdomain', data.fromdomain),
-                    ...this.opcional('sip_group', data.sip_group),
-                    ...this.opcional('language', data.language),
-                    ...this.opcional('mailbox', data.mailbox),
-                    ...this.opcional('md5secret', data.md5secret),
-                    ...this.opcional('deny', data.deny),
-                    ...this.opcional('permit', data.permit),
-                    ...this.opcional('pickupgroup', data.pickupgroup),
-                    ...this.opcional('port', data.port),
-                    ...this.opcional('rtptimeout', data.rtptimeout),
-                    ...this.opcional('rtpholdtimeout', data.rtpholdtimeout),
-                    ...this.opcional('ipaddr', data.ipaddr),
-                    ...this.opcional('fullcontact', data.fullcontact),
-                    ...this.opcional('setvar', data.setvar),
-                    ...this.opcional('regserver', data.regserver),
-                    ...this.opcional('lastms', data.lastms),
-                    ...this.opcional('auth', data.auth),
-                    ...this.opcional('subscribemwi', data.subscribemwi),
-                    ...this.opcional('vmexten', data.vmexten),
-                    ...this.opcional('cid_number', data.cid_number),
-                    ...this.opcional('callingpres', data.callingpres),
-                    ...this.opcional('usereqphone', data.usereqphone),
-                    ...this.opcional('mohsuggest', data.mohsuggest),
-                    ...this.opcional('autoframing', data.autoframing),
-                    ...this.opcional('maxcallbitrate', data.maxcallbitrate),
-                    ...this.opcional('outboundproxy', data.outboundproxy),
-                    ...this.opcional('rtpkeepalive', data.rtpkeepalive),
-                    ...this.opcional('useragent', data.useragent),
-                    ...this.opcional('lineStatus', data.lineStatus),
-                    ...this.opcional('url_events', data.url_events),
-                    ...this.opcional('forward', data.forward),
-                    ...this.opcional('block_call_reg', data.block_call_reg),
-                    ...this.opcional('alias', data.alias),
-                    ...this.opcional('description', data.description),
-                    ...this.opcional('addparameter', data.addparameter),
-                    ...this.opcional('cnl', data.cnl),
-                    ...this.opcional('type_forward', data.type_forward),
-                    ...this.opcional('id_ivr', data.id_ivr),
-                    ...this.opcional('id_queue', data.id_queue),
-                    ...this.opcional('id_sip', data.id_sip),
-                    ...this.opcional('extension', data.extension),
-                    ...this.opcional('voicemail_email', data.voicemail_email),
-                    ...this.opcional('sip_config', data.sip_config),
-                    ...this.opcional('sipshowpeer', data.sipshowpeer)
-                };
-
-                if (!data.dry) { return await this.query(payload) } else { return 'Dry finished' }
-            },
-            edit: async (data) => {
-                this._ExpectedArgs(data, ['id', 'id_filtro'], "XOR");
-                data.id = data.id_filtro ? await this.clients.sipUsers.fGetId(data.id_filtro) : data.id;
-
-                let module = 'sip';
-                let action = 'save';
-                let payload = {
-                    module: module,
-                    action: action,
-                    id: data.id,
-                    ...this.opcional("id_user", data.id_user_filtro ? await this.clients.users.fGetId(data.id_user_filtro) : data.id_user),
-                    ...this.opcional('defaultuser', data.defaultuser),
-                    ...this.opcional('secret', data.secret),
-                    ...this.opcional('name', data.name),
-                    ...this.opcional('callerid', data.callerid),
-                    ...this.opcional('disallow', data.disallow),
-                    ...this.opcional('allow', data.allow),
-                    ...this.opcional('host', data.host),
-                    ...this.opcional('directmedia', data.directmedia),
-                    ...this.opcional('context', data.context),
-                    ...this.opcional('dtmfmode', data.dtmfmode),
-                    ...this.opcional('insecure', data.insecure),
-                    ...this.opcional('nat', data.nat),
-                    ...this.opcional('qualify', data.qualify),
-                    ...this.opcional('type', data.type),
-                    ...this.opcional('regseconds', data.regseconds),
-                    ...this.opcional('allowtransfer', data.allowtransfer),
-                    ...this.opcional('calllimit', data.calllimit),
-                    ...this.opcional('ringfalse', data.ringfalse),
-                    ...this.opcional('record_call', data.record_call),
-                    ...this.opcional('voicemail', data.voicemail),
-                    ...this.opcional('dial_timeout', data.dial_timeout),
-                    ...this.opcional('techprefix', data.techprefix),
-                    ...this.opcional('amd', data.amd),
-                    ...this.opcional('id_trunk_group', data.id_trunk_group),
-                    ...this.opcional('videosupport', data.videosupport),
-                    ...this.opcional('voicemail_password', data.voicemail_password),
-                    ...this.opcional('id_user', data.id_user),
-                    ...this.opcional('name', data.name),
-                    ...this.opcional('accountcode', data.accountcode),
-                    ...this.opcional('regexten', data.regexten),
-                    ...this.opcional('amaflags', data.amaflags),
-                    ...this.opcional('callgroup', data.callgroup),
-                    ...this.opcional('callerid', data.callerid),
-                    ...this.opcional('DEFAULTip', data.defaultip),
-                    ...this.opcional('fromuser', data.fromuser),
-                    ...this.opcional('fromdomain', data.fromdomain),
-                    ...this.opcional('sip_group', data.sip_group),
-                    ...this.opcional('language', data.language),
-                    ...this.opcional('mailbox', data.mailbox),
-                    ...this.opcional('md5secret', data.md5secret),
-                    ...this.opcional('deny', data.deny),
-                    ...this.opcional('permit', data.permit),
-                    ...this.opcional('pickupgroup', data.pickupgroup),
-                    ...this.opcional('port', data.port),
-                    ...this.opcional('rtptimeout', data.rtptimeout),
-                    ...this.opcional('rtpholdtimeout', data.rtpholdtimeout),
-                    ...this.opcional('ipaddr', data.ipaddr),
-                    ...this.opcional('fullcontact', data.fullcontact),
-                    ...this.opcional('setvar', data.setvar),
-                    ...this.opcional('regserver', data.regserver),
-                    ...this.opcional('lastms', data.lastms),
-                    ...this.opcional('auth', data.auth),
-                    ...this.opcional('subscribemwi', data.subscribemwi),
-                    ...this.opcional('vmexten', data.vmexten),
-                    ...this.opcional('cid_number', data.cid_number),
-                    ...this.opcional('callingpres', data.callingpres),
-                    ...this.opcional('usereqphone', data.usereqphone),
-                    ...this.opcional('mohsuggest', data.mohsuggest),
-                    ...this.opcional('autoframing', data.autoframing),
-                    ...this.opcional('maxcallbitrate', data.maxcallbitrate),
-                    ...this.opcional('outboundproxy', data.outboundproxy),
-                    ...this.opcional('rtpkeepalive', data.rtpkeepalive),
-                    ...this.opcional('useragent', data.useragent),
-                    ...this.opcional('lineStatus', data.lineStatus),
-                    ...this.opcional('url_events', data.url_events),
-                    ...this.opcional('forward', data.forward),
-                    ...this.opcional('block_call_reg', data.block_call_reg),
-                    ...this.opcional('alias', data.alias),
-                    ...this.opcional('description', data.description),
-                    ...this.opcional('addparameter', data.addparameter),
-                    ...this.opcional('cnl', data.cnl),
-                    ...this.opcional('type_forward', data.type_forward),
-                    ...this.opcional('id_ivr', data.id_ivr),
-                    ...this.opcional('id_queue', data.id_queue),
-                    ...this.opcional('id_sip', data.id_sip),
-                    ...this.opcional('extension', data.extension),
-                    ...this.opcional('voicemail_email', data.voicemail_email),
-                    ...this.opcional('sip_config', data.sip_config),
-                    ...this.opcional('sipshowpeer', data.sipshowpeer)
-                    /*
-                    campos opcionais de sipUsers aqui
-                    */
-                }
-
-                return await this.query(payload)
-            },
-            delete: async (data) => {
-                this._ExpectedArgs(data, ['id', 'id_filtro'], "XOR")
-                data.id = data.id_filtro ? await this.clients.sipUsers.fGetId(data.id_filtro) : data.id;
-
-                let module = 'sip';
-                return await this.destroy(module, data.id)
-            },
-            find: async (filters) => {
-                let module = 'sip'
-                this.interpretFilters(filters);
-                let r = await this.read(module);
-
-                this.clearFilter()
-                return r
-            },
-            fGetId: async (filters) => {
-                try {
-                    const ret = await this.clients.sipUsers.find(filters);
-                    this.validateReturn(ret);
-
-                    if (parseInt(ret.count) !== 1) {
-                        throw (`Filtro "${filters}": ${ret.count} resultados.`);
-                    } else {
-                        const sipUser = ret.rows[0];
-                        console.log(`fGetId --> ${sipUser.id}`);
-                        return sipUser.id;
-                    }
-                } catch (err) {
-                    throw new FindError(`${err}`).stack;
-                }
-            }
-        }
-    };
-
-    billing = { // DONE
-        refills: { // DONE
-            new: async (data) => { // DONE
-                this._ExpectedArgs(data, ['credit'], "AND")
-                this._ExpectedArgs(data, ['id_user', 'id_user_filtro'], "XOR")
-
-                if (!isFloat(data.credit)) { throw new Error('O tipo de "credit" precisa ser um valor de ponto flutuante (float)!')}
-
-                if (!data.id) { data.description = "Recharge via API" } // Mensagem padrão na criação de um refill
-
-                let module = 'refill'
-                let action = 'save'
-                let payload = {
-                    module: module,
-                    action: action,
-                    id: data.id ?? 0, // 0 para a criação de um novo 
-                    payment: data.payment ?? 1, // geralmente isso aqui nao muda, somente pra controle interno
-                    ...this.opcional("id_user", data.id_user_filtro ? await this.clients.users.fGetId(data.id_user_filtro) : data.id_user), // Quem receberá a recarga
-                    credit: data.credit, // Precisa ser um float. Talvez funcione com string formatada igual um float
-                    ...this.opcional("date", data.date), // YYYY-MM-DD HH-mm-SS, automaticamente preenchido se ausente
-                    ...this.opcional("description", data.description),
-                    ...this.opcional("invoice_number", data.invoice_number), // Não sei
-                    ...this.opcional("image", data.image) // Comprovante de pagamento
-                }
-
-                if (!data.dry) { return await this.query(payload) } else { return 'Dry finished' }
-
-            },
-            edit: async (data) => { // DONE
-                this._ExpectedArgs(data, ['id', 'id_filtro'], "XOR");
-                data.id = data.id_filtro ? await this.billing.refills.fGetId(data.id_filtro) : data.id;
-
-                if (data.credit && !isFloat(data.credit)) { throw new Error('O tipo de "credit" precisa ser um valor de ponto flutuante (float)!') }
-
-                let module = 'refill';
-                let action = 'save';
-                let payload = {
-                    module: module,
-                    action: action,
-                    id: data.id,
-                    ...this.opcional("id_user", data.id_user_filtro ? await this.clients.users.fGetId(data.id_user_filtro) : data.id_user),
-                    ...this.opcional("credit", data.credit),
-                    ...this.opcional("payment", data.payment),
-                    ...this.opcional("date", data.date), // YYYY-MM-DD HH-mm-SS, automaticamente preenchido se ausente
-                    ...this.opcional("description", data.description),
-                    ...this.opcional("invoice_number", data.invoice_number), // Não sei
-                    ...this.opcional("image", data.image) // Comprovante de pagamento
-                }
-
-                if (!data.dry) { return await this.query(payload) } else { return 'Dry finished' }
-                //
-            },
-            delete: async (data) => {
-                this._ExpectedArgs(data, ['id', 'id_filtro'], "XOR");
-                data.id = data.id_filtro ? await this.billing.refills.fGetId(data.id_filtro) : data.id; // Se passou filtro, uso. Se não, uso ID. Garanto que não tem ambos através do ExpectedArgs:XOR
-
-                let module = 'refill';
-                return await this.destroy(module, data.id); // Lembrando, o ID esperado aqui é o ID interno, e não o número do usuario!
-            },
-            find: async (filters) => { // DONE
-                let module = 'refill';
-                this.interpretFilters(filters);
-                let r = await this.read(module);
-
-                this.clearFilter()
-                return r
-            },
-            fGetId: async (filters) => { // DONE
-                try {
-                    const ret = await this.billing.refills.find(filters);
-                    this.validateReturn(ret);
-
-                    if (parseInt(ret.count) !== 1) {
-                        throw (`Filtro "${filters}": ${ret.count} resultados.`);
-                    } else {
-                        const refill = ret.rows[0];
-                        console.log(`fGetId --> ${refill.id}`);
-                        return refill.id;
-                    }
-                } catch (err) {
-                    throw new FindError(`${err}`).stack;
-                }
-            }
-        }
-    }
-
-    dids = { // DONE
-        dids: { // DONE
-            new: async (data) => {
-                // base
-                let module = 'did'
-                let action = 'save'
-
-                this._ExpectedArgs(data, ['did'], "AND");
-                this._ExpectedArgs(data, ['id_user', 'id_user_filtro'], "NAND");
-
-                let payload = {
-                    module: module, // Obrigatório
-                    action: action, // Obrigatório
-                    id: 0,          // Obrigatório
-                    did: data.did,  // Obrigatório, input
-                    id_user: data.id_user ?? await this.clients.users.fGetId(data.id_user_filtro) ?? 0, 
-                    ...this.opcional("country", data.country),
-                    ...this.opcional("record_call", data.record_call),
-                    ...this.opcional("activated", data.activated),
-                    ...this.opcional("callerid", data.callerid),
-                    ...this.opcional("connection_charge", data.connection_charge),
-                    ...this.opcional("fixrate", data.fixrate),
-                    ...this.opcional("connection_sell", data.connection_sell),
-                    ...this.opcional("minimal_time_buy", data.minimal_time_buy),
-                    ...this.opcional("buyrateinitblock", data.buyrateinitblock),
-                    ...this.opcional("buyrateincrement", data.buyrateincrement),
-                    ...this.opcional("minimal_time_charge", data.minimal_time_charge),
-                    ...this.opcional("initblock", data.initblock),
-                    ...this.opcional("increment", data.increment),
-                    ...this.opcional("charge_of", data.charge_of),
-                    ...this.opcional("calllimit", data.calllimit),
-                    ...this.opcional("id_server", data.id_server),
-                    ...this.opcional("description", data.description),
-                    ...this.opcional("expression_1", data.expression_1),
-                    ...this.opcional("buy_rate_1", data.buy_rate_1),
-                    ...this.opcional("selling_rate_1", data.selling_rate_1),
-                    ...this.opcional("agent_client_rate_1", data.agent_client_rate_1),
-                    ...this.opcional("block_expression_1", data.block_expression_1),
-                    ...this.opcional("send_to_callback_1", data.send_to_callback_1),
-                    ...this.opcional("expression_2", data.expression_2),
-                    ...this.opcional("buy_rate_2", data.buy_rate_2),
-                    ...this.opcional("selling_rate_2", data.selling_rate_2),
-                    ...this.opcional("agent_client_rate_2", data.agent_client_rate_2),
-                    ...this.opcional("block_expression_2", data.block_expression_2),
-                    ...this.opcional("send_to_callback_2", data.send_to_callback_2),
-                    ...this.opcional("expression_3", data.expression_3),
-                    ...this.opcional("buy_rate_3", data.buy_rate_3),
-                    ...this.opcional("selling_rate_3", data.selling_rate_3),
-                    ...this.opcional("agent_client_rate_3", data.agent_client_rate_3),
-                    ...this.opcional("block_expression_3", data.block_expression_3),
-                    ...this.opcional("send_to_callback_3", data.send_to_callback_3),
-                    ...this.opcional("cbr", data.cbr),
-                    ...this.opcional("cbr_ua", data.cbr_ua),
-                    ...this.opcional("cbr_total_try", data.cbr_total_try),
-                    ...this.opcional("cbr_time_try", data.cbr_time_try),
-                    ...this.opcional("cbr_em", data.cbr_em),
-                    ...this.opcional("TimeOfDay_monFri", data.TimeOfDay_monFri),
-                    ...this.opcional("TimeOfDay_sat", data.TimeOfDay_sat),
-                    ...this.opcional("TimeOfDay_sun", data.TimeOfDay_sun),
-                    ...this.opcional("workaudio", data.workaudio),
-                    ...this.opcional("noworkaudio", data.noworkaudio),
-                }
-
-                if (!data.dry) { return await this.query(payload) } else { return 'Dry finished' }
-
-            },
-            edit: async (data) => {
-                this._ExpectedArgs(data, ['id', 'id_filtro'], "XOR")
-                data.id = data.id_filtro ? await this.dids.dids.fGetId(data.id_filtro) : data.id;
-
-                let module = 'did';
-                let action = 'save';
-                let payload = {
-                    module: module,
-                    action: action,
-                    id: data.id,
-                    ...this.opcional('did', data.did),
-                    ...this.opcional("country", data.country),
-                    ...this.opcional("record_call", data.record_call),
-                    ...this.opcional("activated", data.activated),
-                    ...this.opcional("callerid", data.callerid),
-                    ...this.opcional("connection_charge", data.connection_charge),
-                    ...this.opcional("fixrate", data.fixrate),
-                    ...this.opcional("connection_sell", data.connection_sell),
-                    ...this.opcional("minimal_time_buy", data.minimal_time_buy),
-                    ...this.opcional("buyrateinitblock", data.buyrateinitblock),
-                    ...this.opcional("buyrateincrement", data.buyrateincrement),
-                    ...this.opcional("minimal_time_charge", data.minimal_time_charge),
-                    ...this.opcional("initblock", data.initblock),
-                    ...this.opcional("increment", data.increment),
-                    ...this.opcional("charge_of", data.charge_of),
-                    ...this.opcional("calllimit", data.calllimit),
-                    ...this.opcional("id_server", data.id_server),
-                    ...this.opcional("description", data.description),
-                    ...this.opcional("expression_1", data.expression_1),
-                    ...this.opcional("buy_rate_1", data.buy_rate_1),
-                    ...this.opcional("selling_rate_1", data.selling_rate_1),
-                    ...this.opcional("agent_client_rate_1", data.agent_client_rate_1),
-                    ...this.opcional("block_expression_1", data.block_expression_1),
-                    ...this.opcional("send_to_callback_1", data.send_to_callback_1),
-                    ...this.opcional("expression_2", data.expression_2),
-                    ...this.opcional("buy_rate_2", data.buy_rate_2),
-                    ...this.opcional("selling_rate_2", data.selling_rate_2),
-                    ...this.opcional("agent_client_rate_2", data.agent_client_rate_2),
-                    ...this.opcional("block_expression_2", data.block_expression_2),
-                    ...this.opcional("send_to_callback_2", data.send_to_callback_2),
-                    ...this.opcional("expression_3", data.expression_3),
-                    ...this.opcional("buy_rate_3", data.buy_rate_3),
-                    ...this.opcional("selling_rate_3", data.selling_rate_3),
-                    ...this.opcional("agent_client_rate_3", data.agent_client_rate_3),
-                    ...this.opcional("block_expression_3", data.block_expression_3),
-                    ...this.opcional("send_to_callback_3", data.send_to_callback_3),
-                    ...this.opcional("cbr", data.cbr),
-                    ...this.opcional("cbr_ua", data.cbr_ua),
-                    ...this.opcional("cbr_total_try", data.cbr_total_try),
-                    ...this.opcional("cbr_time_try", data.cbr_time_try),
-                    ...this.opcional("cbr_em", data.cbr_em),
-                    ...this.opcional("TimeOfDay_monFri", data.TimeOfDay_monFri),
-                    ...this.opcional("TimeOfDay_sat", data.TimeOfDay_sat),
-                    ...this.opcional("TimeOfDay_sun", data.TimeOfDay_sun),
-                    ...this.opcional("workaudio", data.workaudio),
-                    ...this.opcional("noworkaudio", data.noworkaudio),
-                }
-
-                if (!data.dry) { return await this.query(payload) } else { return 'Dry finished' }
-            },
-            delete: async (data) => {
-                this._ExpectedArgs(data, ['id', 'id_filtro'], "XOR")
-                data.id = data.id_filtro ? await this.dids.dids.fGetId(data.id_filtro) : data.id;
-
-                let module = 'did';
-                let action = 'destroy';
-                let payload = {
-                    module: module,
-                    action: action,
-                    id: data.id,
-                    id_user: '0',
-                }
-                
-                if (!data.dry) { return await this.query(payload) } else { return 'Dry finished' }
-            },
-            find: async (filters) => {
-                let module = 'did'
-                this.interpretFilters(filters);
-                let r = await this.read(module);
-
-                this.clearFilter()
-                return r
-            },
-            fGetId: async (filters) => {
-                try {
-                    const ret = await this.dids.dids.find(filters);
-                    this.validateReturn(ret);
-
-                    if (parseInt(ret.count) !== 1) {
-                        throw (`Filtro "${filters}": ${ret.count} resultados.`);
-                    } else {
-                        const dids = ret.rows[0];
-                        console.log(`fGetId --> ${dids.id}`);
-                        return dids.id;
-                    }
-                } catch (err) {
-                    throw new FindError(`${err}`).stack;
-                }                
-            }
-        },
-        didDestination: { // DONE
-            new: async (data) => {
-                this._ExpectedArgs(data, ["type"], "AND")
-                this._ExpectedArgs(data, ["id_user", "id_user_filtro"], "XOR")
-                this._ExpectedArgs(data, ["id_did", "id_did_filtro"], "XOR")
-
-                switch (data.type.toLowerCase()) {
-                    case 'call_to_pstn':
-                    case 'pstn':
-                        this._ExpectedArgs(data, ['destination'], "AND") // obrigatório
-                        this._ExpectedArgs(data, ['id_sip', 'context', 'id_ivr', 'id_queue', 'context'], "NOR") // não pode
-                        data.voip_call = 0 // Isso é necessário para setar o tipo para PSTN.
-                        break;
-                    case 'sip':
-                        //
-                        this._ExpectedArgs(data, ['id_sip'], "AND")    // obrigatório
-                        this._ExpectedArgs(data, ['voip_call', 'destination', 'context', 'id_ivr', 'id_queue', 'context'], "NOR") // não pode
-                        data.voip_call = 1
-                        break;
-                    case 'ivr':
-                        //
-                        this._ExpectedArgs(data, ['id_ivr'], "AND")
-                        this._ExpectedArgs(data, ['voip_call', 'destination', 'id_sip', 'context', 'id_queue', 'context'], "NOR") // não pode
-                        data.voip_call = 2
-                        break;
-                    case 'callingcard':
-                        throw new Error('Esse tipo ainda não está implementado! :)')
-                        data.voip_call = 3
-                        break;
-                    case 'direct_extension':
-                        throw new Error('Esse tipo ainda não está implementado! :)')
-                        data.voip_call = 4
-                        break;
-                    case 'cid_callback':
-                        throw new Error('Esse tipo ainda não está implementado! :)')
-                        data.voip_call = 5
-                        break;
-                    case '0800_callback':
-                        throw new Error('Esse tipo ainda não está implementado! :)')
-                        data.voip_call = 6
-                        break;
-                    case 'queue':
-                        //
-                        this._ExpectedArgs(data, ['id_queue'], "AND") // obrigatório
-                        this._ExpectedArgs(data, ['voip_call', 'destination', 'id_sip', 'context', 'id_ivr', 'context'], "NOR") // não pode
-                        data.voip_call = 7
-                        break;
-                    case 'sip_group':
-                        throw new Error('Esse tipo ainda não está implementado! :)')
-                        data.voip_call = 8
-                        break;
-                    case 'custom':
-                        throw new Error('Esse tipo ainda não está implementado! :)')
-                        data.voip_call = 9
-                        break;
-                    case 'context':
-                        this._ExpectedArgs(data, ['context'], "AND")
-                        this._ExpectedArgs(data, ['voip_call', 'destination', 'id_sip', 'id_ivr', 'id_queue'], "NOR") // não pode
-                        data.voip_call = 10
-                        break;
-                    case 'multiple_ips':
-                        this._ExpectedArgs(data, ['id_sip'], "AND")    // obrigatório
-                        this._ExpectedArgs(data, ['voip_call', 'destination', 'context', 'id_ivr', 'id_queue', 'context'], "NOR") // não pode
-                        data.voip_call = 11
-                        break;
-                    default:
-                        break;
-                }
-
-                let module = 'diddestination'
-                let action = 'save'
-
-                let payload = {
-                    module: module,                             // Obrigatório
-                    action: action,                             // Obrigatório
-                    id: data.id ?? 0,                           // Obrigatório, 0 para criação, um ID específico para edição.
-                    id_did : data.id_did_filtro ? await this.dids.dids.fGetId(data.id_did_filtro) : data.id_did, // Obrigatório, input
-                    id_user: data.id_user_filtro ? await this.clients.users.fGetId(data.id_user_filtro) : data.id_user, // Obrigatório, input 
-                    destination: data.destination ?? "",        // Obrigatóriamente vazio, pode alterar dependendo do Tipo
-                    voip_call: data.voip_call ?? 1,             // Dependente do Tipo
-                    priority: data.priority ?? 1,               // Default
-                    ...this.opcional("context", data.context),
-                    ...this.opcional("id_sip", data.id_sip),
-                    ...this.opcional("id_ivr", data.id_ivr),
-                }
-
-                if (!data.dry) { return await this.query(payload) } else { return 'Dry finished' }
-
-            },
-            edit: async (data) => {
-                this._ExpectedArgs(data, ['id', 'id_filtro'], "XOR") // Obrigatório
-                this._ExpectedArgs(data, ["id_user", "id_user_filtro"], "NAND") // Opcional, mas não ambos
-                this._ExpectedArgs(data, ["id_did", "id_did_filtro"], "NAND") // Opcional, mas não ambos
-                data.id = data.id_filtro ? await this.dids.didDestination.fGetId(data.id_filtro) : data.id;
-                
-                switch (data.type.toLowerCase()) {
-                    case 'call_to_pstn':
-                    case 'pstn':
-                        this._ExpectedArgs(data, ['destination'], "AND") // obrigatório
-                        this._ExpectedArgs(data, ['id_sip', 'context', 'id_ivr', 'id_queue', 'context'], "NOR") // não pode
-                        data.voip_call = 0 // Isso é necessário para setar o tipo para PSTN.
-                        break;
-                    case 'sip':
-                        //
-                        this._ExpectedArgs(data, ['id_sip'], "AND")    // obrigatório
-                        this._ExpectedArgs(data, ['voip_call', 'destination', 'context', 'id_ivr', 'id_queue', 'context'], "NOR") // não pode
-                        data.voip_call = 1
-                        break;
-                    case 'ivr':
-                        //
-                        this._ExpectedArgs(data, ['id_ivr'], "AND")
-                        this._ExpectedArgs(data, ['voip_call', 'destination', 'id_sip', 'context', 'id_queue', 'context'], "NOR") // não pode
-                        data.voip_call = 2
-                        break;
-                    case 'callingcard':
-                        throw new Error('Esse tipo ainda não está implementado! :)')
-                        data.voip_call = 3
-                        break;
-                    case 'direct_extension':
-                        throw new Error('Esse tipo ainda não está implementado! :)')
-                        data.voip_call = 4
-                        break;
-                    case 'cid_callback':
-                        throw new Error('Esse tipo ainda não está implementado! :)')
-                        data.voip_call = 5
-                        break;
-                    case '0800_callback':
-                        throw new Error('Esse tipo ainda não está implementado! :)')
-                        data.voip_call = 6
-                        break;
-                    case 'queue':
-                        //
-                        this._ExpectedArgs(data, ['id_queue'], "AND") // obrigatório
-                        this._ExpectedArgs(data, ['voip_call', 'destination', 'id_sip', 'context', 'id_ivr', 'context'], "NOR") // não pode
-                        data.voip_call = 7
-                        break;
-                    case 'sip_group':
-                        throw new Error('Esse tipo ainda não está implementado! :)')
-                        data.voip_call = 8
-                        break;
-                    case 'custom':
-                        throw new Error('Esse tipo ainda não está implementado! :)')
-                        data.voip_call = 9
-                        break;
-                    case 'context':
-                        this._ExpectedArgs(data, ['context'], "AND")
-                        this._ExpectedArgs(data, ['voip_call', 'destination', 'id_sip', 'id_ivr', 'id_queue'], "NOR") // não pode
-                        data.voip_call = 10
-                        break;
-                    case 'multiple_ips':
-                        this._ExpectedArgs(data, ['id_sip'], "AND")    // obrigatório
-                        this._ExpectedArgs(data, ['voip_call', 'destination', 'context', 'id_ivr', 'id_queue', 'context'], "NOR") // não pode
-                        data.voip_call = 11
-                        break;
-                    default:
-                        break;
-                }
-
-                let module = 'diddestination';
-                let action = 'save';
-                let payload = {
-                module: module,                                         // Obrigatório
-                    action: action,                                     // Obrigatório
-                    id: data.id, 
-                    ...this.opcional("id_did", data.id_did_filtro ? await this.dids.dids.fGetId(data.id_did_filtro) : data.id_did), // Obrigatório, input
-                    ...this.opcional("id_user", data.id_user_filtro ? await this.clients.users.fGetId(data.id_user_filtro) : data.id_user), // Obrigatório, input 
-                    ...this.opcional("destination", data.destination),
-                    ...this.opcional("voip_call", data.voip_call),
-                    ...this.opcional("priority", data.priority),
-                    ...this.opcional("context", data.context),
-                    ...this.opcional("id_sip", data.id_sip),
-                    ...this.opcional("id_ivr", data.id_ivr),
-                }
-
-                return await this.query(payload)
-            },
-            delete: async (data) => {
-                this._ExpectedArgs(data, ['id', 'filtro'], "XOR")
-                data.id = data.filtro ? await this.dids.didDestination.fGetId(data.filtro) : data.id;
-
-                let module = 'diddestination';
-                let action = 'destroy';
-                return await this.query({
-                    module: module,
-                    action: action,
-                    id: data.id,
-                });
-            },
-            find: async (filters) => {
-                let module = 'diddestination'
-                this.interpretFilters(filters);
-                let r = await this.read(module);
-
-                this.clearFilter()
-                return r
-            },
-            fGetId: async (filters) => {
-                try {
-                    const ret = await this.dids.didDestination.find(filters);
-                    this.validateReturn(ret);
-
-                    if (parseInt(ret.count) !== 1) {
-                        throw (`Filtro "${filters}": ${ret.count} resultados.`);
-                    } else {
-                        const didDestinations = ret.rows[0];
-                        console.log(`fGetId --> ${didDestinations.id}`);
-                        return didDestinations.id;
-                    }
-                } catch (err) {
-                    throw new FindError(`${err}`).stack;
-                }   
-            }
-        }
-    };
-
-    rates = { // TO-DO
-        plans: { // TO-DO
-            new: async (data) => {
-                //
-            },
-            edit: async (data) => {
-                //
-            },
-            delete: async (data) => {
-                //
-            },
-            find: async (filters) => {
-                //
-            },
-            fGetId: async (filters) => {
-                //
-            }
-        },
-        tariffs: { // TO-DO
-            new: async (data) => {
-                //
-            },
-            edit: async (data) => {
-                //
-            },
-            delete: async (data) => {
-                //
-            },
-            find: async (filters) => {
-                //
-            },
-            fGetId: async (filters) => {
-                //
-            }
-        },
-        prefixes: { // TO-DO
-            new: async (data) => {
-                //
-            },
-            edit: async (data) => {
-                //
-            },
-            delete: async (data) => {
-                //
-            },
-            find: async (filters) => {
-                //
-            },
-            fGetId: async (filters) => {
-                //
-            }
-        }
-    }
-
-    reports = {
-        cdr: {
-            find: async (filters) => {
-                let module = 'call'
-                this.interpretFilters(filters);
-                let r = await this.read(module);
-
-                this.clearFilter()
-                return r
-            }
-        }
-    }
-
-    routes = { // TO-DO
-        providers: { // TO-DO
-            new: async (data) => {
-                //
-            },
-            edit: async (data) => {
-                //
-            },
-            delete: async (data) => {
-                //
-            },
-            find: async (filters) => {
-                //
-            },
-            fGetId: async (filters) => {
-                //
-            }
-        },
-        trunks: { // TO-DO
-            new: async (data) => {
-                //
-            },
-            edit: async (data) => {
-                //
-            },
-            delete: async (data) => {
-                //
-            },
-            find: async (filters) => {
-                //
-            },
-            fGetId: async (filters) => {
-                //
-            }
-        },
-        trunkGroups: { // TO-DO
-            new: async (data) => {
-                //
-            },
-            edit: async (data) => {
-                //
-            },
-            delete: async (data) => {
-                //
-            },
-            find: async (filters) => {
-                //
-            },
-            fGetId: async (filters) => {
-                //
-            }
         }
     }
 
