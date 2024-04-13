@@ -3,7 +3,7 @@ const axios = require('axios');
 // Importante:
 // "/var/www/html/mbilling/protected/controllers/DidController.php +462" > adicionar um "s" no "$value[id]"
 
-const { isSet, isFloat, arrayHasKey } = require('./lib/utils');
+const { isSet, isFloat, arrayHasKey, createNonce } = require('./lib/utils');
 
 // User
 const { USER_ENDPOINT } = require('./lib/endpoints/clients/user')
@@ -534,9 +534,7 @@ class MagnusBilling {
             }
         }
 
-        // Gerar um nonce para evitar problemas com sistemas de 32 bits
-        const mt = new Date().getTime().toString();
-        req.nonce = mt.slice(-10) + mt.substr(2, 6);
+        req.nonce = createNonce()
         this.log.info("Gerado \"nonce\".")
         this.log.debug('- nonce: ' + req.nonce)
 
