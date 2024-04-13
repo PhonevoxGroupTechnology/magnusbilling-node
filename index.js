@@ -132,8 +132,9 @@ class MagnusBilling {
 
     // UTILITÁRIOS // ---------------------------------------------------------------------------------------------------
 
-    // Função de log com nível.
     log = {
+        // Função de log com nível.
+
         trace: (message) => {
             if (this.debug >= 6) { console.log(`[\x1b[36mTRACE\x1b[0m] \x1b[36m${this.log_tag}${message}\x1b[0m`) }
         },
@@ -156,13 +157,12 @@ class MagnusBilling {
         clearTag: (tag) => { this.log_tag = ""; return this.log }
     }
 
-    // Recebe dois objetos
-    // arr1: { test: {required: true, max: 5 } }
-    // arr2: { test: {default: 5} }
-    // e mescla-os em um:
-    // res: { test: {required: true, max: 5, default: 5} }
-    // Necessário para mesclar USER_RULES com API_RULES (em específico, nos método save (add) )
     mergeRules = (rule1, rule2) => {
+        // Utilizado para mesclar dois arrays de regras
+        // arr1: { test: {required: true, max: 5 } }
+        // arr2: { test: {default: 5} }
+        // mergeRules(arg1, arg2) --->  test: {required: true, max: 5, default: 5} }
+
         if (typeof rule1 !== 'object' || typeof rule2 !== 'object') {
             throw new Error('Ambos os parâmetros devem ser objetos');
         }
@@ -192,6 +192,7 @@ class MagnusBilling {
     };
 
     async formatApiRequirement(data, outputType) {
+
         // Processamento mais bruto, utilizado por alguns métodos
         function CrudeProcessArgumentRequirements(data) {
             const result = {
@@ -336,10 +337,13 @@ class MagnusBilling {
 
     // ENDPOINT PREPARATION // ------------------------------------------------------------------------------------------------------------
 
-    // Função que prepara as configurações de um endpoint
+    // Essa etapa, na verdade, só prepara as regras da API...
     async generateEndpoint(action, module, USER_RULES, SKIP_API = false) {
+        // Função que prepara as configurações de um endpoint
         let API_RULES = {}
-        if (action === 'save' &&  !SKIP_API) { // módulo desgraçado!
+
+        // Gerando as regras do endpoint {module}, pela API do MagnusBilling.
+        if (action === 'save' &&  !SKIP_API) {
             this.log.info(`- Consultando módulo "${module}" na API getFields...`)
             try {
                 // Preparando os requisitos PELA API DO MAGNUS
@@ -356,7 +360,7 @@ class MagnusBilling {
         }
 
 
-        // Mesclando a configuração da API com a configuração do endpoint segundo o usuário
+        // Mesclando as regras de {module} vindas da API e da configuração do Endpoint 
         const argumentRules = this.mergeRules(USER_RULES, API_RULES)
         const ENDPOINT_CONFIG = {
             action,
@@ -372,18 +376,21 @@ class MagnusBilling {
         return endpoint;
     }
 
-    // Função que, a partir da configuração do endpoint, constrói-o e executa a ação de fato
+    // Essa função retorna outra função pra ser usada de endpoint.
+    // Nessa etapa é feita a validação das regras, e, com as regras de acordo, é feito a query de fato ao MagnusBilling para o módulo e ação.
     buildEndpointHandler(parameters) {
         return async (data) => {
             this.log.clearTag().setTag(`[buildEndpointHandler] `);
             this.log.info(`<@> Gerando endpoint "${parameters.module}/${parameters.action}" <@>`)
             this.log.trace(`Data array: ${JSON.stringify(data)}`);
 
-            // Adicionando ARGUMENTS para Payload
+            // Interpretando as regras.
             let payload_additions;
             payload_additions = this.interpretArguments(data, parameters);
 
-            // Adicionando DATA para Payload
+            // Criando a carga (payload) com base:
+            // 1. No retorno da interpretação das regras: "payload_additions" (daqui vem os valores defaults, e os valores fixos)
+            // 2. Nos argumentos repassados pelo usuário: "data" (daqui vem os argumentos e valores do usuário)
             let payload = Object.assign(data, payload_additions);
             payload.module = parameters.module;
             payload.action = parameters.action;
@@ -395,6 +402,7 @@ class MagnusBilling {
             this.log.info(" <@> CHECAGEM DE ARGUMENTOS OK <@> ");
 
             if (parameters.action === 'read') {
+                // Métodos: find, getid
                 this.interpretFilters(data.filtro)
                 payload.page = parameters.page ?? 1
                 payload.start === 1 ? 0 : (parameters.page - 1) * 25
@@ -403,31 +411,21 @@ class MagnusBilling {
                 let ret = await this.query(payload)
                 this.clearFilter()
                 return ret
-            } else if (parameters.action === 'destroy') {
-                payload.multi = true
-                return await this.query(payload)
             } else {
+                // todos os outros métodos
                 return await this.query(payload);
             }
         }
     }
 
     interpretArguments(data, parameters) {
-        // TODO:
-        // Falar os erros todos de uma vez, e não um argumento por vez.
-        // Se tiver 3 argumentos errados, o usuário terá que rodar 3 vezes, e corrigir um a 1.
-        // Quero que, se tiver 3 argumentos errados, informe os 3 argumentos que estão errados desde a primeira "rodada".
-
         let payload = {...data};
 
-        console.log(parameters.argumentRules)
+        this.log.trace(`Regras: ${JSON.stringify(parameters.argumentRules)}`)
         for (const argument in parameters.argumentRules) {
             const rule = parameters.argumentRules[argument];
             // argument : Argumento que estou validando
             // rule     : Regras do argumento que estou validando.
-
-            // primeiro valido os fixos e defaults, para acrescentá-los à data
-            // this.log.info(`Verificando regras do argumento ${argument}...`)
 
             // Explicação de tags dos argumentos.
             // required: bool > é um argumento obrigatório?
@@ -438,7 +436,6 @@ class MagnusBilling {
             // minLength: int > quantidade mínima de tamanho de caracteres do argumento
             // maxLength: int > quantidade máxima de tamanho de caracteres do argumento
             // prohibited: bool > se o argumento NÃO PODE ser repassado
-
 
             // Validando PROHIBITED (se existir em data, dar erro. else, else, nada.)
             if (isSet(rule.prohibited)) {
@@ -509,179 +506,25 @@ class MagnusBilling {
         return payload
     }
 
-    checkExpectedArguments(data, expectedArguments) {
-        expectedArguments.forEach(exp => {
-            // x, y, NOR
-            // a, b, c, AND
-            this.validateLogic(data, exp.arguments, exp.logic)
-        });
-    }
-
-    validateDefaultArguments(data, defaultArguments) {
-        let ret = {}
-
-        // Vejo a lista de argumentos que precisam de um valor padrão
-        defaultArguments.forEach(def => {
-
-            // Se o argumento não foi repassado pelo usuário, acrescento-o á lista de argumentos à adicionar na payload
-            if (!arrayHasKey(data, def.argument)) {
-                ret[def.argument] = def.value
-            }
-        })
-        // Envio os argumentos que devem ser acrescentados à payload
-        return ret
-    }
-
-    validateFixedArguments(data, fixedArguments) {
-        let ret = {}
-        let FORBIDDEN_ARGS = []
-
-        // Vejo a lista de argumentos proibidos
-        fixedArguments.forEach(fix => {
-
-            // Se essa chave existir, adiciono à lista de argumentos que apontaram problema
-            if (arrayHasKey(data, fix.argument)) {
-                FORBIDDEN_ARGS.push(fix.argument)
-            } else {
-                ret[fix.argument] = fix.value
-            }
-        })
-
-        // Se foi identificado algum argumento proibido (key "fix.argument" existe em "data"), informo erro.
-        if (FORBIDDEN_ARGS.length > 0) {
-            throw new Error(`Não repasse argumentos fixos: ${FORBIDDEN_ARGS.join(', ')}`)
-        }
-
-        // Envio os argumentos que devem ser acrescentados à payload
-        return ret
-    }
-
-    validateLogic(data, expectedArguments, logic = "AND") {
-        let MISSING_ARGS
-        let PRESENT_ARGS
-        let FORBIDDEN_ARGS
-        this.log.trace(`[ValidateLogic] - Lógica: ${logic}`)
-        this.log.trace(`[ValidateLogic] Argumentos: ${expectedArguments.join(', ')}`)
-        switch (logic) {
-            case 'AND':
-                MISSING_ARGS = expectedArguments.filter(arg => !(arg in data))
-                if (MISSING_ARGS.length > 0) {
-                    throw new Error(`Argumentos necessários: ${MISSING_ARGS.join(', ')}`).stack;
-                }
-                break;
-            case 'OR':
-                if (!expectedArguments.some(arg => arg in data)) {
-                    throw new Error(`Argumentos necessários: ${expectedArguments.join(', ')}`).stack;
-                }
-                break;
-            case 'NAND':
-                FORBIDDEN_ARGS = expectedArguments.filter(arg => arg in data).length;
-                if (FORBIDDEN_ARGS === expectedArguments.length) {
-                    throw new Error(`Conflito de argumentos: ${expectedArguments.join(', ')}`).stack;
-                }
-                break;
-            case 'NOR':
-                FORBIDDEN_ARGS = expectedArguments.filter(arg => arg in data);
-                if (FORBIDDEN_ARGS.length > 0) {
-                    throw new Error(`Argumentos não permitidos: ${FORBIDDEN_ARGS.join(', ')}`).stack;
-                }
-                break;
-            case 'XOR':
-                PRESENT_ARGS = expectedArguments.filter(arg => arg in data).length;
-                if (PRESENT_ARGS === 0) {
-                    throw new Error(`Ao menos um argumento necessário: ${expectedArguments.join(', ')}`).stack;
-                }
-                if (!(PRESENT_ARGS === 1)) {
-                    throw new Error(`Apenas um dos argumentos é necessário: ${expectedArguments.join(', ')}`).stack;
-                }
-                break;
-            case 'XNOR':
-                PRESENT_ARGS = expectedArguments.filter(arg => arg in data).length;
-                if (!((PRESENT_ARGS === 0) || (PRESENT_ARGS === expectedArguments.length))) {
-                    throw new Error(`Todos ou nenhum dos argumentos são necessários: ${expectedArguments.join(', ')}`).stack;
-                }
-                break;
-            default:
-                throw new Error(`Tipo de lógica inválida: ${logic}`)
-                ;
-        }
-    }
-
-    validateArgumentsLength(data, argumentsLength) {
-        let BAD_ARGS_MAX = []
-        let BAD_ARGS_MIN = []
-        for (const item of argumentsLength) {
-            const { arguments: args, max } = item; // Renomeando para evitar conflito com a palavra reservada 'arguments'
-            for (const key of args) {
-                if (key in data) {
-
-                    // Stringi-fico o valor, pois não existe value.length de número por exemplo.
-                    // E se não for uma string, vai me causar problemas.
-                    // TODO: refatorar isso?
-                    // https://stackoverflow.com/questions/10952615/how-can-i-find-the-length-of-a-number
-                    const value = String(data[key]); // stringi-fico, pois só quero saber o tamanho. importante notar que se o valor for um float, o PONTO será contado como um caractere a mais.
-                    if (typeof value !== 'string') {
-                        this.log.warning("ARGUMENTS LENGTH: O tamanho")
-                    }
-                    if (typeof value !== 'string' || value.length > max) {
-                        BAD_ARGS_MAX.push(`${key}:${max}`)
-                    }
-                }
-            }
-        }
-
-        // preguiça de corrigir isso pra exibir os dois erros de uma vez só. primeiro vai avisar max, depois vai avisar min.
-        if (BAD_ARGS_MAX.length > 0) {
-            throw new Error(`Os seguintes valores excedem o limite de caractere: ${BAD_ARGS_MAX.join(', ')}`).stack
-        }
-
-        if (BAD_ARGS_MIN.length > 0) {
-            throw new Error(`Os seguintes valores não batem o limite mínimo de caractere: ${BAD_ARGS_MIN.join(', ')}`).stack
-        }
-    }
-
-    validateIntegerOnlyArguments(data, integerOnlyArguments) {
-        let BAD_ARGS = []
-        for (const key in data) {
-            if (integerOnlyArguments.includes(key)) {
-                const value = data[key];
-                this.log.trace('[ValidateInteger] - Checando argumento: ' + key)
-                this.log.trace('[ValidateInteger] Valor: ' + value)
-                this.log.trace('[ValidateInteger] Tipo: ' + typeof (value))
-                if (!Number.isInteger(value)) {
-                    BAD_ARGS.push(key)
-                }
-                this.log.trace('[ValidateInteger] Bad Arguments: ' + BAD_ARGS)
-            }
-        }
-
-        if (BAD_ARGS.length > 0) {
-            throw new Error(`Os seguintes argumentos precisam ser inteiros: ${BAD_ARGS.join(', ')}`).stack;
-        }
-    }
-
     // API // ------------------------------------------------------------------------------------------------------------
 
     async query(req = {}) {
-        // console.log(req)
-
         let payload
         let { module, action } = req;
         module = module ?? '';
         action = action ?? '';
         this.log.clearTag().setTag(`[query] [${module}/${action}] `)
 
-        // Se for um delete, eu vejo se tá passando uma LISTA no ID. 
-        // Caso seja lista eu preciso editar o formato da payload para permitir apagar vários em uma única request.
+        // Conferindo se está deletando vários IDs ao mesmo tempo: Caso esteja, preciso reformular a carga (payload) de outra maneira para a API do MagnusBilling.
         if (action === 'destroy') {
             this.log.info('<#> É uma requisição DESTROY! <#>')
             if (Array.isArray(req.id)) {
                 this.log.info('<#> Está passando multiplos IDs! Reformulando payload... <#>')
                 this.log.trace(`- Payload antiga : ${JSON.stringify(req)}`)
+
                 // TODO: deixar essa merda mais bonita. por enquanto NAO ENCOSTA, ESTÁ FUNCIONANDO.
                 payload = { ...req }
                 delete payload.id
-                delete payload.multi
                 delete payload.module
                 req.id.forEach(id => {
                     payload.rows = JSON.stringify(req.id.map(id => ({ id })));
@@ -747,55 +590,15 @@ class MagnusBilling {
         }
     }
 
+    // ---------------------------- // Utilitários para leitura de dados // ----------------------------------- //
 
-
-
-
-
-
-
-
-    async read(module, page = 1, action = 'read') {
-        return await this.query({
-            module: module,
-            action: action,
-            page: page,
-            start: page === 1 ? 0 : (page - 1) * 25,
-            limit: 25,
-            filter: JSON.stringify(this.filter)
-        });
-    }
-
-    async getFields(module) {
-        return await this.query({
-            module: module,
-            getFields: 1
-        });
-    }
-
-    async getModules() {
-        return await this.query({
-            getModules: 1
-        });
-    }
-
-    async getMenu(username) {
-        return await this.query({
-            username: username,
-            getMenu: 1
-        });
-    }
-
-    clearFilter() {
-        this.filter = [];
-    }
-
+    // Filtrar dados na query
     setFilter(field, value, comparison = 'st', type = 'string') {
         this.log.trace(`Campo: ${field}`)
         this.log.trace(`Valor: ${value}`)
         this.log.trace(`Comp.: ${comparison}`)
         this.log.trace(`Tipo : ${type}`)
-
+        
         this.filter.push({
             type: type,
             field: field,
@@ -803,7 +606,14 @@ class MagnusBilling {
             comparison: comparison
         });
     }
+    
+    // Remover os filtros
+    clearFilter() {
+        this.filter = [];
+    }
 
+    // Forma "simplificada" de passar vários filtros ao mesmo tempo
+    // filterList = [ ['arg', 'comparison', 'value'], ['arg', 'comparison', 'value'], ... ]
     interpretFilters(filterList) {
         if (filterList !== undefined && filterList.length > 0) {
             // console.log('filter list:' + filterList)
@@ -815,7 +625,7 @@ class MagnusBilling {
                 const operadorInterpretado = this.signalToLetter[operador] || operador;
 
                 if (!this.validSignals.includes(operadorInterpretado)) {
-                    throw new InvalidOperator(`Operador comparativo "${operadorInterpretado}" inválido. Seu filtro está correto?`).stack
+                    throw new Error(`Operador comparativo "${operadorInterpretado}" inválido. Seu filtro está correto?`).stack
                 }
 
                 // Confirmando
@@ -829,6 +639,32 @@ class MagnusBilling {
             });
         }
     }
+
+    // ---------------------------- // Utilitários da API do MagnusBilling // ----------------------------------- //
+
+    // Confirmar requisitos de cada argumento
+    async getFields(module) {
+        return await this.query({
+            module: module,
+            getFields: 1
+        });
+    }
+
+    // Confirmar todos módulos existentes
+    async getModules() {
+        return await this.query({
+            getModules: 1
+        });
+    }
+
+    // ?
+    async getMenu(username) {
+        return await this.query({
+            username: username,
+            getMenu: 1
+        });
+    }
+    
 
 }
 
