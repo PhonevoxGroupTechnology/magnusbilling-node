@@ -418,10 +418,53 @@ class MagnusBilling {
         }
     }
 
+    validateProhibited(payload, argument, rule, badArgs) {
+        if (isSet(rule.prohibited)) {
+            if (payload[argument]) {
+                this.log.error(`[${argument}] - Prohibited: Argumento ${argument} proibido!`)
+                badArgs.prohibited.push(argument)
+            } else {
+                payload[argument] = rule.fixed
+                this.log.trace(`[${argument}] - PROHIBITED: Argumento não é proibido..`)
+            }
+        }
+    }
+
+    validateFixed(payload, argument, rule, badArgs) {
+        if (isSet(rule.fixed)) {
+            if (payload[argument]) {
+                this.log.error(`[${argument}] - FIXED: Argumento ${argument} proibido! Não repasse argumentos fixos.`)
+                badArgs.fixed.push(argument)
+            } else {
+                payload[argument] = rule.fixed
+                this.log.trace(`[${argument}] - FIXED: Adicionado à payload como "${rule.fixed}".`)
+            }
+        }
+    }
+
+    validateDefault(payload, argument, rule) {
+        if (isSet(rule.default)) {
+            if (!payload[argument]) { // Se não foi repassado pelo usuário, adiciono à payload.
+                payload[argument] = rule.default
+                this.log.trace(`[${argument}] - DEFAULT: Adicionado à payload como "${rule.default}".`)
+            } else {
+                this.log.trace(`[${argument}] - DEFAULT: Está presente, permanecerá como "${payload[argument]}".`)
+            }
+        }
+    }
+
     interpretArguments(data, parameters) {
         let payload = {...data};
 
         this.log.trace(`Regras: ${JSON.stringify(parameters.argumentRules)}`)
+        let badArguments = {
+            prohibited: [],
+            fixed: [],
+            default: [],
+            required: [],
+            maxlength: [],
+            minlength: []
+        }
         for (const argument in parameters.argumentRules) {
             const rule = parameters.argumentRules[argument];
             // argument : Argumento que estou validando
@@ -438,36 +481,14 @@ class MagnusBilling {
             // prohibited: bool > se o argumento NÃO PODE ser repassado
 
             // Validando PROHIBITED (se existir em data, dar erro. else, else, nada.)
-            if (isSet(rule.prohibited)) {
-                if (payload[argument]) {
-                    this.log.error(`[${argument}] - Prohibited: Argumento ${argument} proibido!`)
-                    throw new Error("Argumento proibido.").stack
-                } else {
-                    payload[argument] = rule.fixed
-                    this.log.trace(`[${argument}] - PROHIBITED: Argumento não é proibido..`)
-                }
-            }
+            this.validateProhibited(payload, argument, rule, badArguments)
 
             // Validando FIXED (se existir em data, dar erro. else, acrescentar na payload)
-            if (isSet(rule.fixed)) {
-                if (payload[argument]) {
-                    this.log.error(`[${argument}] - FIXED: Argumento ${argument} proibido! Não repasse argumentos fixos.`)
-                    throw new Error("Não repasse argumentos fixos.").stack
-                } else {
-                    payload[argument] = rule.fixed
-                    this.log.trace(`[${argument}] - FIXED: Adicionado à payload como "${rule.fixed}".`)
-                }
-            }
-
+            this.validateFixed(payload, argument, rule, badArguments)
+            
             // Validando DEFAULT (se ja existir em data, pular. else, acrescentar na payload)
-            if (isSet(rule.default)) {
-                if (!payload[argument]) { // Se não foi repassado pelo usuário, adiciono à payload.
-                    payload[argument] = rule.default
-                    this.log.trace(`[${argument}] - DEFAULT: Adicionado à payload como "${rule.default}".`)
-                } else {
-                    this.log.trace(`[${argument}] - DEFAULT: Está presente, permanecerá como "${payload[argument]}".`)
-                }
-            }
+            this.validateDefault(payload, argument, rule) // nao tem badarg aqui
+            
 
             // Validando REQUIRED (se não existir em data, **E** este argumento NÃO CONTER A REGRA fixed **OU** default, da erro)
             if (rule.required) {

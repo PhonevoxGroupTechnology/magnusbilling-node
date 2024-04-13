@@ -214,10 +214,11 @@ async function test(endpoint, outputType) {
 // id_user : 11
 mb.echoResponse = true;
 
-mb.rates.tariffs.list({
-    id_plan: 1,
-    id_trunk_group: 1,
-    id_prefix: 1
+mb.dids.diddestination.add({
+    type: "pstn",
+    destination: "01111",
+    id_queue: 1,
+    id_did: 1
 })
 .catch(err => {
     console.log(err)
