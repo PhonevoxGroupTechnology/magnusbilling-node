@@ -3,7 +3,7 @@ const axios = require('axios');
 // Importante:
 // "/var/www/html/mbilling/protected/controllers/DidController.php +462" > adicionar um "s" no "$value[id]"
 
-const { isSet, isFloat, arrayHasKey, createNonce } = require('./lib/utils');
+const { isSet, isFloat, arrayHasKey, createNonce, getQueryString } = require('./lib/utils');
 
 // User
 const { USER_ENDPOINT } = require('./lib/endpoints/clients/user')
@@ -538,8 +538,7 @@ class MagnusBilling {
         this.log.info("Gerado \"nonce\".")
         this.log.debug('- nonce: ' + req.nonce)
 
-        // Gerar a string de dados POST
-        const post_data = new URLSearchParams(req).toString();
+        const post_data = getQueryString(req)
         this.log.info("Gerado \"post_data\".")
         this.log.debug('- post_data: ' + post_data)
 
