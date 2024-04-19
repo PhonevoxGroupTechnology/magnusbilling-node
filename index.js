@@ -496,6 +496,36 @@ class MagnusBilling {
         }
     }
 
+    checkArgumentErrors(badArgs) {
+        let problems = []
+        if (badArgs.prohibited.length > 0) {
+            problems.push(`Argumentos proibidos: ${badArgs.prohibited.join(", ")}`)
+        } 
+
+        if (badArgs.fixed.length > 0) {
+            problems.push(`Não repasse argumentos fixos: ${badArgs.fixed.join(", ")}`)
+        }
+
+        if (badArgs.default.length > 0) {
+            problems.push(`Você caiu em um lugar inesperado... Por algum motivo algum argumento default foi interpretado como errado.`)
+        }
+
+        if (badArgs.required.length > 0) {
+            problems.push(`Argumentos necessários: ${badArgs.required.join(", ")}`)
+        }
+
+        if (badArgs.maxlength.length > 0) {
+            problems.push(`Argumentos com tamanho excedido: ${badArgs.maxLength.join(", ")}`)
+        }
+
+        if (badArgs.minlength.length > 0) {
+            problems.push(`Argumentos fora do tamanho mínimo: ${badArgs.minLength.join(", ")}`)
+        }
+
+        throw new Error(problems.join("; "))
+
+    }
+
     interpretArguments(data, parameters) {
         let payload = {...data};
 
@@ -544,13 +574,7 @@ class MagnusBilling {
         }
 
         // Conferindo se alguma das validações anteriores deu algum problema.
-        console.log("#####################")
-        console.log('PROBLEMAS IDENTIFICADOS:')
-        console.log(badArguments)
-        console.log("#####################")
-        checkArgumentErrors(badArguments)
-
-        throw new Error('stop').stack
+        this.checkArgumentErrors(badArguments);
 
         return payload
     }
