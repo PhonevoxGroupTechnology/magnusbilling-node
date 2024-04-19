@@ -453,6 +453,49 @@ class MagnusBilling {
         }
     }
 
+    validateRequired(payload, argument, rule, badArgs) {
+        if (rule.required) {
+            if (!payload[argument]) {
+                this.log.error(`[${argument}] - REQUIRED: Argumento obrigatório: ${argument}`)
+                badArgs.required.push(argument)
+            } else {
+                this.log.trace(`[${argument}] - REQUIRED: Está presente.`)
+            }
+        }
+    }
+
+    validateMaxLength(payload, argument, rule, badArgs) {
+        if (rule.maxLength) {
+            if (payload[argument]) {
+                let field = String(payload[argument])
+                if (field.length > rule.maxLength) {
+                    this.log.error(`[${argument}] - MAXLENGTH: Excedeu o limite de caracteres!`)
+                    badArgs.maxlength.push(argument)
+                } else {
+                    this.log.trace(`[${argument}] - MAXLENGTH: Não excede o limite de caracteres.`)
+                }
+            } else {
+                this.log.trace(`[${argument}] - MAXLENGTH: Argumento não está presente.`)
+            }
+        }
+    }
+
+    validateMinLength(payload, argument, rule, badArgs) {
+        if (rule.minLength) {
+            if (payload[argument]) {
+                let field = String(payload[argument])
+                if (field.length < rule.minLength) {
+                    this.log.error(`[${argument}] - MINLENGTH: Não atingiu a quatidade mínima de caracteres!`)
+                    badArgs.minlength.push(argument)
+                } else {
+                    this.log.trace(`[${argument}] - MINLENGTH: Tem mais caractéres que o mínimo: OK.`)
+                }
+            } else {
+                this.log.trace(`[${argument}] - MINLENGTH: Argumento não está presente.`)
+            }
+        }
+    }
+
     interpretArguments(data, parameters) {
         let payload = {...data};
 
@@ -460,7 +503,7 @@ class MagnusBilling {
         let badArguments = {
             prohibited: [],
             fixed: [],
-            default: [],
+            default: [], // nao existe, nao tem como isso aqui dar problema
             required: [],
             maxlength: [],
             minlength: []
@@ -487,35 +530,16 @@ class MagnusBilling {
             this.validateFixed(payload, argument, rule, badArguments)
             
             // Validando DEFAULT (se ja existir em data, pular. else, acrescentar na payload)
-            this.validateDefault(payload, argument, rule) // nao tem badarg aqui
+            this.validateDefault(payload, argument, rule) // nao tem badarg aqui, porque nao tem como isso retornar um problema
             
-
-            // Validando REQUIRED (se não existir em data, **E** este argumento NÃO CONTER A REGRA fixed **OU** default, da erro)
-            if (rule.required) {
-                if (!payload[argument]) {
-                    this.log.error(`[${argument}] - REQUIRED: Argumento obrigatório: ${argument}`)
-                    throw new Error(`Argumento obrigatório: ${argument}`)
-                } else {
-                    this.log.trace(`[${argument}] - REQUIRED: Está presente.`)
-                }
-            }
+            // Validando REQUIRED (se não existir em data, **E** este argumento NÃO CONTER A REGRA fixed **OU** default, da erro)]
+            this.validateRequired(payload, argument, rule, badArguments)
 
             // Validando MAX LENGTH (se o tamanho do argumento em data for maior que essa regra)
-            if (rule.maxLength) {
-                if (payload[argument]) {
-                    let field = String(payload[argument])
-                    if (field.length > rule.maxLength) {
-                        this.log.error(`[${argument}] - MAXLENGTH: Excedeu o limite de caracteres!`)
-                        throw new Error(`Argumento "${argument}" excede o limite de "${rule.maxLength}" caracteres.`)
-                    } else {
-                        this.log.trace(`[${argument}] - MAXLENGTH: Não excede o limite de caracteres.`)
-                    }
-                } else {
-                    this.log.trace(`[${argument}] - MAXLENGTH: Argumento não está presente.`)
-                }
-            }
+            this.validateMaxLength(payload, argument, rule, badArguments)
 
             // Validando MIN LENGTH (se o tamanho do argumento em data for menor que essa regra)
+            this.validateMinLength(payload, argument, rule, badArguments)
             if (rule.minLength) {
                 this.log.debug(`${argument} : Validando regra MINLENGTH`)
                 this.log.trace("- Regra existe.")
@@ -523,6 +547,15 @@ class MagnusBilling {
             }
 
         }
+
+        // Conferindo se alguma das validações anteriores deu algum problema.
+        console.log("#####################")
+        console.log('PROBLEMAS IDENTIFICADOS:')
+        console.log(badArguments)
+        console.log("#####################")
+        checkArgumentErrors(badArguments)
+
+        throw new Error('stop').stack
 
         return payload
     }
