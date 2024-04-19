@@ -540,11 +540,6 @@ class MagnusBilling {
 
             // Validando MIN LENGTH (se o tamanho do argumento em data for menor que essa regra)
             this.validateMinLength(payload, argument, rule, badArguments)
-            if (rule.minLength) {
-                this.log.debug(`${argument} : Validando regra MINLENGTH`)
-                this.log.trace("- Regra existe.")
-                // verificar tanto em data quanto em payload
-            }
 
         }
 
