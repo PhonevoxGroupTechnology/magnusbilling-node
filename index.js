@@ -503,11 +503,7 @@ class MagnusBilling {
         } 
 
         if (badArgs.fixed.length > 0) {
-            problems.push(`Não repasse argumentos fixos: ${badArgs.fixed.join(", ")}`)
-        }
-
-        if (badArgs.default.length > 0) {
-            problems.push(`Você caiu em um lugar inesperado... Por algum motivo algum argumento default foi interpretado como errado.`)
+            problems.push(`Argumentos fixos proibidos: ${badArgs.fixed.join(", ")}`)
         }
 
         if (badArgs.required.length > 0) {
@@ -533,7 +529,6 @@ class MagnusBilling {
         let badArguments = {
             prohibited: [],
             fixed: [],
-            default: [], // nao existe, nao tem como isso aqui dar problema
             required: [],
             maxlength: [],
             minlength: []
