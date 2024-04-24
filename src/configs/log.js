@@ -19,7 +19,7 @@ const generateLogger = (logName, logfileLocation, consoleLogLevel = 'debug', fil
 
     winston.addColors(colors);
 
-    console.log('Criando o ' + logName + ' para salvar em ' + logfileLocation + ', com o filtro ' + consoleLogLevel + ' e a TimeZone: ' + systemTimeZone)
+    // console.log('Criando o ' + logName + ' para salvar em ' + logfileLocation + ', com o filtro ' + consoleLogLevel + ' e a TimeZone: ' + systemTimeZone)
 
     // Função para validar se uma string representa um nível de log válido
     const isValidLogLevelString = (str) => {
