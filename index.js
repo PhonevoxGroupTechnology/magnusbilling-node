@@ -402,15 +402,24 @@ class MagnusBilling {
             this.log.info(" <@> CHECAGEM DE ARGUMENTOS OK <@> ");
 
             if (parameters.action === 'read') {
+                this.log.trace(`<-> read action <->`)
                 // Métodos: find, getid
-                this.interpretFilters(data.filtro)
-                payload.page = parameters.page ?? 1
-                payload.start === 1 ? 0 : (parameters.page - 1) * 25
-                payload.limit = 25
-                payload.filter = JSON.stringify(this.filter)
-                let ret = await this.query(payload)
-                this.clearFilter()
-                return ret
+                this.interpretFilters(data.filtro);
+                const DEFAULT_PAGE = 1;
+                const DEFAULT_LIMIT = 25;
+
+                payload.page = payload.page ?? 1;
+                payload.limit = payload.limit ?? 25;
+                payload.start === 1 ? 0 : (parameters.page - 1) * payload.limit;
+                payload.filter = JSON.stringify(this.filter);
+
+                this.log.trace(`<-> Pages : ${payload.page}`);
+                this.log.trace(`<-> Limit : ${payload.limit}`);
+                this.log.trace(`<-> Start : ${payload.start}`);
+                this.log.trace(`<-> Filter: ${payload.filter}`);
+                let ret = await this.query(payload);
+                this.clearFilter();
+                return ret;
             } else {
                 // todos os outros métodos
                 return await this.query(payload);
