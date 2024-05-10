@@ -518,7 +518,10 @@ class MagnusBilling {
             problems.push(`Argumentos fora do tamanho mínimo: ${badArgs.minLength.join(", ")}`)
         }
 
-        throw new Error(problems.join("; "))
+        // Throwing if anything points to an error
+        if (problems.length > 0) { 
+            throw new Error(problems.join("; "))
+        }
 
     }
 
