@@ -4,7 +4,7 @@ const path = require('path')
 // Importante:
 // "/var/www/html/mbilling/protected/controllers/DidController.php +462" > adicionar um "s" no "$value[id]"
 
-const { isSet, isFloat, arrayHasKey, createNonce, getQueryString } = require(path.resolve(__dirname, 'lib/utils'));
+const { isSet, isFloat, arrayHasKey, createNonce, getQueryString } = require(path.resolve(__dirname, 'lib/Utils'));
 
 // User
 const { USER_ENDPOINT } = require(path.resolve(__dirname, 'lib/endpoints/clients/user'))
