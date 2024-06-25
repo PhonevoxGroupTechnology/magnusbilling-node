@@ -1,37 +1,38 @@
 const axios = require('axios');
+const path = require('path')
 
 // Importante:
 // "/var/www/html/mbilling/protected/controllers/DidController.php +462" > adicionar um "s" no "$value[id]"
 
-const { isSet, isFloat, arrayHasKey, createNonce, getQueryString } = require('./lib/utils');
+const { isSet, isFloat, arrayHasKey, createNonce, getQueryString } = require(path.resolve(__dirname, 'lib/utils'));
 
 // User
-const { USER_ENDPOINT } = require('./lib/endpoints/clients/user')
-const { SIP_ENDPOINT } = require('./lib/endpoints/clients/sip')
-const { CALLONLINE_ENDPOINT } = require('./lib/endpoints/clients/callonline')
-const { CALLERID_ENDPOINT } = require('./lib/endpoints/clients/callerid')
-const { ATALINKSYS_ENDPOINT } = require('./lib/endpoints/clients/atalinksys')
+const { USER_ENDPOINT } = require(path.resolve(__dirname, 'lib/endpoints/clients/user'))
+const { SIP_ENDPOINT } = require(path.resolve(__dirname, 'lib/endpoints/clients/sip'))
+const { CALLONLINE_ENDPOINT } = require(path.resolve(__dirname, 'lib/endpoints/clients/callonline'))
+const { CALLERID_ENDPOINT } = require(path.resolve(__dirname, 'lib/endpoints/clients/callerid'))
+const { ATALINKSYS_ENDPOINT } = require(path.resolve(__dirname, 'lib/endpoints/clients/atalinksys'))
 
 // Billing
-const { REFILL_ENDPOINT } = require('./lib/endpoints/billing/refill')
+const { REFILL_ENDPOINT } = require(path.resolve(__dirname, 'lib/endpoints/billing/refill'))
 
 // Dids
-const { DIDS_ENDPOINT } = require('./lib/endpoints/dids/dids')
-const { DIDDESTINATION_ENDPOINT } = require('./lib/endpoints/dids/diddestination')
+const { DIDS_ENDPOINT } = require(path.resolve(__dirname, 'lib/endpoints/dids/dids'))
+const { DIDDESTINATION_ENDPOINT } = require(path.resolve(__dirname, 'lib/endpoints/dids/diddestination'))
 
 // Rates
-const { PREFIXES_ENDPOINT } = require('./lib/endpoints/rates/prefixes')
-const { PLANS_ENDPOINT } = require('./lib/endpoints/rates/plans')
-const { TARIFFS_ENDPOINT } = require('./lib/endpoints/rates/tariffs')
-const { OFFERS_ENDPOINT } = require('./lib/endpoints/rates/offers')
+const { PREFIXES_ENDPOINT } = require(path.resolve(__dirname, 'lib/endpoints/rates/prefixes'))
+const { PLANS_ENDPOINT } = require(path.resolve(__dirname, 'lib/endpoints/rates/plans'))
+const { TARIFFS_ENDPOINT } = require(path.resolve(__dirname, 'lib/endpoints/rates/tariffs'))
+const { OFFERS_ENDPOINT } = require(path.resolve(__dirname, 'lib/endpoints/rates/offers'))
 
 // Routes
-const { TRUNKS_ENDPOINT } = require('./lib/endpoints/routes/trunks')
-const { PROVIDERS_ENDPOINT } = require('./lib/endpoints/routes/providers')
-const { TRUNKGROUPS_ENDPOINT } = require('./lib/endpoints/routes/trunkgroups')
+const { TRUNKS_ENDPOINT } = require(path.resolve(__dirname, 'lib/endpoints/routes/trunks'))
+const { PROVIDERS_ENDPOINT } = require(path.resolve(__dirname, 'lib/endpoints/routes/providers'))
+const { TRUNKGROUPS_ENDPOINT } = require(path.resolve(__dirname, 'lib/endpoints/routes/trunkgroups'))
 
 // Reports
-const { CDR_ENDPOINT } = require('./lib/endpoints/reports/cdr')
+const { CDR_ENDPOINT } = require(path.resolve(__dirname, 'lib/endpoints/reports/cdr'))
 
 class MagnusBilling {
     constructor(api_key, api_secret, public_url, debug = 3) {
