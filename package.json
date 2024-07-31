@@ -1,38 +1,26 @@
 {
-  "name": "magnusbilling-node",
-  "version": "1.0.0",
-  "description": "<details>\r   <summary>Clientes</summary>",
-  "main": "index.js",
-  "directories": {
-    "lib": "lib"
-  },
-  "scripts": {
-    "test": "node ./examples.js",
-    "dev": "node ./examples.js",
-    "server": "node ./server.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/adriankubinyete/magnusbilling-node.git"
-  },
-  "keywords": [
-    "magnus"
-  ],
-  "author": "eu",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/adriankubinyete/magnusbilling-node/issues"
-  },
-  "homepage": "https://github.com/adriankubinyete/magnusbilling-node#readme",
-  "dependencies": {
-    "axios": "^1.6.8",
-    "body-parser": "^1.20.2",
-    "cors": "^2.8.5",
-    "express": "^4.19.2",
-    "express-rate-limit": "^7.2.0",
-    "helmet": "^7.1.0",
-    "nodemon": "^3.1.0",
-    "winston": "^3.13.0",
-    "winston-daily-rotate-file": "^5.0.0"
-  }
+    "dependencies": {
+        "@bull-board/api": "^5.20.5",
+        "@bull-board/express": "^5.20.5",
+        "body-parser": "^1.20.2",
+        "bull": "^4.14.0",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.5",
+        "express": "^4.19.2",
+        "express-rate-limit": "^7.3.1",
+        "helmet": "^7.1.0",
+        "path": "^0.12.7",
+        "winston": "^3.13.0",
+        "winston-daily-rotate-file": "^5.0.0"
+    },
+    "scripts": {
+        "dev": "npm run development",
+        "development": "npm-run-all -p dev:*",
+        "dev:server": "NODE_ENV=development node ./src/server.js",
+        "dev:queue": "NODE_ENV=development node ./src/queue.js",
+        "prod": "npm run production",
+        "production": "npm-run-all -p prod:*",
+        "prod:server": "NODE_ENV=production node ./src/server.js",
+        "prod:queue": "NODE_ENV=production node ./src/queue.js"
+    }
 }

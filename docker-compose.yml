@@ -1,0 +1,13 @@
+
+services:
+  redis-server:
+    image: redis:6.2.14-alpine
+    container_name: mbn-redisserver
+    command: redis-server --save 20 1 --loglevel warning --requirepass ${REDIS_PASSWORD?error}
+    restart: always
+    volumes: 
+    - ./redis-data:/data
+    ports:
+    - '6379:6379'
+    env_file:
+    - .env

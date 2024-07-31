@@ -1,5 +1,5 @@
 # Arquivos locais com dados sensíveis
-auth.js
+.env.*
 
 # Logs
 logs
