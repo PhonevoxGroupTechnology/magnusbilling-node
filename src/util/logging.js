@@ -2,6 +2,19 @@ const winston = require('winston');
 const path = require('path');
 const DailyRotateFile = require('winston-daily-rotate-file');
 
+// QUICK USAGE:
+// const log = new Logger(NAME, DEBUG_MODE).useEnvConfig().create()
+// const log = new Logger(NAME, DEBUG_MODE).setName('NAME').setLocation('logs/runtime-%DATE%.log').setLevel('unit').setRotate('30d').create()
+// const log = new Logger(NAME, DEBUG_MODE).setName('NAME').setLocation('logs/runtime-%DATE%.log').setConsoleLevel('unit').setFileLevel('unit').setLevel('unit').setRotate('30d').create()
+
+// ENV VARIABLES (if you opt to use ".useEnvConfig()"):
+// LOG_LOCATION=logs/runtime-%DATE%.log # %DATE% Converts to YYYYMMDD  | Same as .setLocation('')
+// LOG_CONSOLE_LEVEL='unit'                                            | Same as .setLevel('') or .setConsoleLevel('')
+// LOG_FILE_LEVEL='unit'                                               | Same as .setLevel('') or .setFileLevel('')
+// LOG_ROTATE_PERIOD=30d                                               | Same as .setRotate('')
+// LOG_DEBUG_MODE=false
+
+
 class Logger {
     constructor(name = undefined, debug = false) {
 
@@ -76,6 +89,7 @@ class Logger {
 
         // Filtra os níveis com base no consoleLogLevel
         const filteredLevels = Object.keys(LEVELS).filter(level => LEVELS[level] <= numericLogLevel);
+
         const transports = [];
 
         if (filteredLevels.length > 0) {
@@ -144,13 +158,13 @@ class Logger {
 
     useEnvConfig() {
         if (this.DEBUG_MODE) {
-            console.log(`Logger: Tentando utilizar as variáveis de ambiente:`)
-            console.log("LOG_NAME" + process.env.LOG_NAME)
-            console.log("LOG_LOCATION" + process.env.LOG_LOCATION)
-            console.log("LOG_CONSOLE_LEVEL" + process.env.LOG_CONSOLE_LEVEL)
-            console.log("LOG_FILE_LEVEL" + process.env.LOG_FILE_LEVEL)
-            console.log("LOG_ROTATE_PERIOD" + process.env.LOG_ROTATE_PERIOD)
-            console.log("LOG_DEBUG_MODE" + process.env.LOG_DEBUG_MODE)
+            console.log(`"${this.NAME}" Logger: Tentando utilizar as variáveis de ambiente:`)
+            console.log(`"${this.NAME}" Logger: LOG_NAME ${process.env.LOG_NAME}`)
+            console.log(`"${this.NAME}" Logger: LOG_LOCATION ${process.env.LOG_LOCATION}`)
+            console.log(`"${this.NAME}" Logger: LOG_CONSOLE_LEVEL ${process.env.LOG_CONSOLE_LEVEL}`)
+            console.log(`"${this.NAME}" Logger: LOG_FILE_LEVEL ${process.env.LOG_FILE_LEVEL}`)
+            console.log(`"${this.NAME}" Logger: LOG_ROTATE_PERIOD ${process.env.LOG_ROTATE_PERIOD}`)
+            console.log(`"${this.NAME}" Logger: LOG_DEBUG_MODE ${process.env.LOG_DEBUG_MODE}`)
         }
 
         this.NAME = process.env.LOG_NAME ?? this.NAME;

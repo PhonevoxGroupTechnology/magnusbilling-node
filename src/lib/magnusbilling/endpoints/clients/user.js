@@ -7,8 +7,9 @@ USER_ENDPOINT = (Magnode) => ({
             const endpoint = await Magnode.generateEndpoint("save", _MODULE, {
                 active: {default: 1},
                 id_group: {default: 3}, // client
-                createUser: {fixed: 1}, // obrigatório para CRIAR user
+                createUser: {required: true, fixed: 1}, // obrigatório para CRIAR user
                 id: {fixed: 0}, // obrigatório para CRIAR user
+                email: {required: true}, // na web nao é obrigatório, mas aqui é. vai entender
             });
             return endpoint(data);
         } catch (err) {
