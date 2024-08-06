@@ -18,10 +18,6 @@ class EndpointMethodManager {
     // obrigado chatgpt
     // Cria um handler com o contexto correto
     _createHandler(originalHandler, action, rules) {
-        if (!this.magnus) {
-            throw Error('EndpointMethodManager: bindMagnusBilling before adding methods.')
-        }
-
         // Extrai os nomes dos parâmetros da função `originalHandler`
         const parameterNames = this._getParameterNames(originalHandler);
 
@@ -30,33 +26,24 @@ class EndpointMethodManager {
             const args = [data];
 
             // Checa e binda os parâmetros com base na presença dos nomes na função `originalHandler`
-            if (parameterNames.includes('magnus')) {
-                args.push(this.magnus);
-            }
-            if (parameterNames.includes('module')) {
-                args.push(this.module);
-            }
-            if (parameterNames.includes('action')) {
-                args.push(action);
-            }
-            if (parameterNames.includes('rules')) {
-                args.push(rules);
-            }
+            if (parameterNames.includes('magnus')) {args.push(this.magnus)};
+            if (parameterNames.includes('module')) {args.push(this.module)};
+            if (parameterNames.includes('action')) {args.push(action)};
+            if (parameterNames.includes('rules')) {args.push(rules)};
 
             // Chama o handler original com os argumentos apropriados
             return originalHandler(...args);
         };
     }
 
-    // Binds MagnusBilling class so you can use it on handlers.
-    // Should be called before adding methods.
-    bindMagnusBilling(mb) {
+    // Para que a classe "MagnusBilling" funcione no <method>.handle(), é preciso bindá-la aqui.
+    // Isso é usado pelo EndpointManager. Não renomeie de forma alguma.
+    _bindMagnusBilling(mb) {
         this.magnus = mb;
         return this;
     }
 
     // Os parametros "magnus, module, action, rules" são palavras reservadas. Não utilize-as como nome de argumentos na função.
-    //
     // endpoint.addMethod('add', {
     //     action: 'save', 
     //     rules: {a: "b"}, 
@@ -75,12 +62,16 @@ class EndpointMethodManager {
         return this;
     }
 
-    getAllMethods() {
-        return this.methods;
-    }
-
     getMethod(name) {
         return this.methods[name];
+    }
+    
+    getAllMethods() {
+        const methodsSummary = {};
+        for (const [methodName, method] of Object.entries(this.methods)) {
+            methodsSummary[methodName] = method.handle;
+        }
+        return methodsSummary;
     }
 
     getAllRules() {

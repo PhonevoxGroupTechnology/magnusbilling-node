@@ -14,5 +14,8 @@ const mb = new MagnusBilling(process.env.MB_API_KEY, process.env.MB_API_SECRET, 
 
 // ------------------------------------------------------------------
 
-const { USER } = require(path.resolve("src/lib/magnusbilling/endpoints"))
-console.log(USER.getAllRules())
+const EndpointManager = require(path.resolve("src/lib/magnusbilling/endpoints"));
+EndpointManager.bindAll(mb);
+console.log(EndpointManager.endpoint.USER.getAllMethods())
+// console.log(endpoints);
+// endpoints.USER.methods.add.handle('teste')

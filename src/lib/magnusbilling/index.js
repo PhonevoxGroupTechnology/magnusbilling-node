@@ -73,6 +73,12 @@ class MagnusBilling {
 
     }
 
+    newEndpoints = {
+        clients: {
+            // users: NEW_USER_ENDPOINT(this),
+        }
+    }
+
     clients = {
         users: USER_ENDPOINT(this),
         sipusers: SIP_ENDPOINT(this),
