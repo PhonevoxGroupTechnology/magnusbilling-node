@@ -7,6 +7,9 @@ const { Logger } = require( path.resolve("src/util/logging") );
 
 const { isSet, isFloat, arrayHasKey, createNonce, getQueryString } = require(path.resolve('src/util/utils'));
 
+// TESTING
+const EndpointManager = require(path.resolve("src/lib/magnusbilling/endpoints"));
+
 // User
 const { USER_ENDPOINT } = require(path.resolve('src/lib/magnusbilling/endpoints/clients/user'))
 const { SIP_ENDPOINT } = require(path.resolve('src/lib/magnusbilling/endpoints/clients/sip'))
@@ -51,6 +54,7 @@ console.log('teste')
 
 class MagnusBilling {
     constructor(api_key, api_secret, public_url, debug = 3) {
+        EndpointManager.bindAll(this);
         this.api_key = api_key;
         this.api_secret = api_secret;
         this.public_url = public_url;
@@ -75,8 +79,13 @@ class MagnusBilling {
 
     newEndpoints = {
         clients: {
-            // users: NEW_USER_ENDPOINT(this),
+            user: EndpointManager.endpoint.USER.getAllMethods(),
+            sip: EndpointManager.endpoint.SIP.getAllMethods(),
         }
+    }
+
+    newEndpoints = {
+        clients: EndpointManager.magia_negra()
     }
 
     clients = {
@@ -356,7 +365,6 @@ class MagnusBilling {
 
         // Mesclando as regras de {module} vindas da API e da configuração do Endpoint 
         const argumentRules = this.mergeRules(USER_RULES, API_RULES)
-        console.log('test --------------------------------------------')
         console.log(this.createMDTable(argumentRules));
         const ENDPOINT_CONFIG = {
             action,

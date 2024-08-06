@@ -1,18 +1,23 @@
 const path = require("path");
 const { EndpointMethodManager } = require(path.resolve("src/lib/magnusbilling/managers"))
 
-const MODULE = 'user';
+const MODULE = 'sip';
 
 const endpoint = new EndpointMethodManager(MODULE);
 
 endpoint.addMethod('add', {
     action: 'save',
     rules: {
-        active: {default: 1},
-        id_group: {default: 3}, // client
-        createUser: {required: true, fixed: 1}, // obrigatório para CRIAR user
-        id: {fixed: 0}, // obrigatório para CRIAR user
-        email: {required: true}, // na web nao é obrigatório, mas aqui é. vai entender
+        id_user: {required: true},
+        secret: {required: true},
+        defaultuser: {required: true},
+        // name: {required: true},
+        callerid: {required: true},
+        qualify: {default: 'yes'},
+        host: {default: 'dynamic'},
+        disallow: {default: 'all'},
+        allow: {default: 'g729,gsm,alaw,ulaw'},
+        id: {fixed: 0}
     },
     handle: async (data, magnus, module, action, rules) => {
         const generatedEndpoint = await magnus.generateEndpoint(action, module, rules);
