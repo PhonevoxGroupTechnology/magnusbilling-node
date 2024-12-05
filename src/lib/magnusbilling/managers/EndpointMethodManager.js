@@ -53,6 +53,7 @@ class EndpointMethodManager {
         if (this.methods[name]) {
             throw new Error(`Método '${name}' já existe.`);
         }
+
         // Armazena a função handler com o contexto apropriado
         this.methods[name] = {
             action,
@@ -80,6 +81,26 @@ class EndpointMethodManager {
             rulesSummary[methodName] = method.rules;
         }
         return rulesSummary;
+    }
+
+    async getMagnusRules() {
+        let api_ret = await this.magnus.getFields(this.module)
+        let formatted = await this.magnus.formatApiRequirement(api_ret, 'simple')
+        console.log(api_ret)
+        console.log(formatted)
+        return formatted
+    }
+
+    test() {
+        // mb.epm.<endpoint>.test
+        // mb.epm.USER.test
+        for (const [methodName, method] of Object.entries(this.methods)) {
+            console.log(`Método: ${methodName}`);
+            console.log(`Ação: ${method.action}`);
+            console.log(`Regras: ${JSON.stringify(method.rules)}`);
+            console.log(`Manipulador: ${method.handle.toString()}`);
+            console.log('---');
+        }
     }
 }
 

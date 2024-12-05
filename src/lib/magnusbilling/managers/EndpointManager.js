@@ -33,6 +33,9 @@ class EndpointManager {
         return this;
     }
 
+    // method to create documentation for every endpoint located, based on endpoint rules
+    //_createDocumentation() {} 
+
 }
 
 module.exports = EndpointManager

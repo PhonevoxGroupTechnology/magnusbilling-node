@@ -7,9 +7,6 @@ const { Logger } = require( path.resolve("src/util/logging") );
 
 const { isSet, isFloat, arrayHasKey, createNonce, getQueryString } = require(path.resolve('src/util/utils'));
 
-// TESTING
-const EndpointManager = require(path.resolve("src/lib/magnusbilling/endpoints"));
-
 // User
 const { USER_ENDPOINT } = require(path.resolve('src/lib/magnusbilling/endpoints/clients/user'))
 const { SIP_ENDPOINT } = require(path.resolve('src/lib/magnusbilling/endpoints/clients/sip'))
@@ -38,10 +35,11 @@ const { TRUNKGROUPS_ENDPOINT } = require(path.resolve('src/lib/magnusbilling/end
 // Reports
 const { CDR_ENDPOINT } = require(path.resolve('src/lib/magnusbilling/endpoints/reports/cdr'))
 
-// test
-const TEST_ENDPOINTS = require(path.resolve('src/lib/magnusbilling/endpoints'))
+// TESTING
+// UPDATE 05/12/24: É daqui que a gente tá tirando o "USER" e EndpointManager.endpoint"SIP"
+// Todos os endpoints daqui pra cima, é da implementação antiga desse sistema
+const EndpointManager = require(path.resolve("src/lib/magnusbilling/endpoints"));
 
-console.log('teste')
 // console.log(TEST_ENDPOINTS.USERTEST('w').add.handle('b'))
 
 
@@ -53,14 +51,18 @@ console.log('teste')
 
 
 class MagnusBilling {
-    constructor(api_key, api_secret, public_url, debug = 3) {
+    constructor(api_key = undefined, api_secret = undefined, public_url = undefined, debug = 3) {
+        if (!api_key || !api_secret || !public_url) {
+            throw new Error("Missing parameters: ");
+        }
         EndpointManager.bindAll(this);
+        this.epm = EndpointManager;
         this.api_key = api_key;
         this.api_secret = api_secret;
         this.public_url = public_url;
         this.debug = debug;
         this.filter = [];
-        this.log = new Logger('MagnusBilling.class', true).useEnvConfig().create()
+        this.log = new Logger('MagnusBilling.class', false).useEnvConfig().create()
         this.echoResponse = false;
 
         this.signalToLetter = {
@@ -84,9 +86,7 @@ class MagnusBilling {
         }
     }
 
-    newEndpoints = {
-        clients: EndpointManager.magia_negra()
-    }
+    // daqui pra baixo fodase
 
     clients = {
         users: USER_ENDPOINT(this),
