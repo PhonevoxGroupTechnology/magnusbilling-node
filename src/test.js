@@ -6,7 +6,6 @@ const envFilePath = path.resolve(__dirname, `../.env.${process.env.NODE_ENV || '
 require('dotenv').config({ path: envFilePath });
 
 const { Logger } = require( path.resolve("src/util/logging") );
-const { createMDTable } = require( path.resolve("src/util/utils") );
 const log = new Logger('test.js', false).useEnvConfig().create()
 
 const { MagnusBilling } = require(path.resolve("src/lib/magnusbilling"));
@@ -25,6 +24,6 @@ mb.epm.endpoint.USER.getAllRules()
     .then((data) => {
         console.log('---------------------------------------------------------------------------------')
         console.log(`Retorno:`)
-        console.log(createMDTable(data))
+        console.log(data)
         console.log('---------------------------------------------------------------------------------')
     })

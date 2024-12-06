@@ -100,46 +100,6 @@ function mergeObjects(rule1, rule2) {
     return result;
 };
 
-function createMDTable(obj) {
-
-    // generate the markdown table description
-    function getDescription(argument) {
-        let description = "";
-
-        if (argument.required) {
-            description += "Required";
-        }
-        if (argument.maxLength) {
-            if (description !== "") description += ", ";
-            description += `Max Length: ${argument.maxLength}`;
-        }
-        if (argument.minLength) {
-            if (description !== "") description += ", ";
-            description += `Min Length: ${argument.minLength}`;
-        }
-        if (argument.numerical && argument.integerOnly) {
-            if (description !== "") description += ", ";
-            description += "int";
-        }
-        if (argument.numerical && ! argument.integerOnly) {
-            if (description !== "") description += ", ";
-            description += "Numerical";
-        }
-
-        return description;
-    }
-
-    let markdownTable = "Key | Description\n";
-    markdownTable += "--- | ---\n";
-
-    for (const key in obj) {
-        const description = getDescription(obj[key]);
-        markdownTable += `${key} | ${description}\n`;
-    }
-
-    return markdownTable;
-}
-
 module.exports = {
     interpretarOperador,
     isFloat,
@@ -149,6 +109,5 @@ module.exports = {
     getQueryString,
     sha256,
     envBool,
-    mergeObjects,
-    createMDTable
+    mergeObjects
 }

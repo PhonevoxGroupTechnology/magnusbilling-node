@@ -197,6 +197,47 @@ class MagnusBilling {
         return result;
     };
 
+    // Usando o simplificado, gera uma tabela markdown.
+    createMDTable(data) {
+
+        // Gera a descrição da tabela Markdown
+        function getDescription(argument) {
+            let description = "";
+
+            if (argument.required) {
+                description += "Required";
+            }
+            if (argument.maxLength) {
+                if (description !== "") description += ", ";
+                description += `Max Length: ${argument.maxLength}`;
+            }
+            if (argument.minLength) {
+                if (description !== "") description += ", ";
+                description += `Min Length: ${argument.minLength}`;
+            }
+            if (argument.numerical && argument.integerOnly) {
+                if (description !== "") description += ", ";
+                description += "int";
+            }
+            if (argument.numerical && ! argument.integerOnly) {
+                if (description !== "") description += ", ";
+                description += "Numerical";
+            }
+
+            return description;
+        }
+
+        let markdownTable = "Key | Description\n";
+        markdownTable += "--- | ---\n";
+
+        for (const key in data) {
+            const description = getDescription(data[key]);
+            markdownTable += `${key} | ${description}\n`;
+        }
+
+        return markdownTable;
+    }
+
     async formatApiRequirement(data, outputType) {
 
         // Processamento mais bruto, utilizado por alguns métodos
