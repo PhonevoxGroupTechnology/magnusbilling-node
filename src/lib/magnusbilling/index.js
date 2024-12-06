@@ -55,8 +55,6 @@ class MagnusBilling {
         if (!api_key || !api_secret || !public_url) {
             throw new Error("Missing parameters: ");
         }
-        EndpointManager.bindAll(this);
-        this.epm = EndpointManager;
         this.api_key = api_key;
         this.api_secret = api_secret;
         this.public_url = public_url;
@@ -77,6 +75,8 @@ class MagnusBilling {
 
         this.validSignals = ['st', 'ed', 'ct', 'eq', 'lt', 'gt']
 
+        EndpointManager.bindAll(this);
+        this.epm = EndpointManager;
     }
 
     newEndpoints = {
@@ -88,78 +88,78 @@ class MagnusBilling {
 
     // daqui pra baixo fodase
 
-    clients = {
-        users: USER_ENDPOINT(this),
-        sipusers: SIP_ENDPOINT(this),
-        callsonline: CALLONLINE_ENDPOINT(this),
-        callerid: CALLERID_ENDPOINT(this),
-        atalinksys: ATALINKSYS_ENDPOINT(this), // unstable
-        //Restricted Number // TODO
-        //IAX // TODO
-        //User History // TODO
-    }
-    billing = {
-        refill: REFILL_ENDPOINT(this),
-        //paymentmethods: {} // TODO
-        //voucher: {} // TODO
-        //refillproviders: {} // TODO
-    }
-    dids = {
-        dids: DIDS_ENDPOINT(this),
-        diddestination: DIDDESTINATION_ENDPOINT(this), // arrumar o edit type
-        // didsuse: {},
-        // ivrs: {},
-        // queues: {},
-        // queuesmembers: {},
-        // queuedashboard: {},
-        // holidays: {},
-        // didhistory: {},
-    }
-    rates = {
-        plans: PLANS_ENDPOINT(this),
-        tariffs: TARIFFS_ENDPOINT(this),
-        prefixes: PREFIXES_ENDPOINT(this),
-        // usercustomrates: {},
-        offers: OFFERS_ENDPOINT(this),
-        // offercdr: {},
-        // offeruse: {},
-    }
-    reports = {
-        cdr: CDR_ENDPOINT(this),
-        // cdrfailed: {},
-        // summaryperday: {},
-        // summarydayuser: {},
-        // summarydaytrunk: {},
-        // summarydayagent: {},
-        // summarypermonth: {},
-        // summarymonthuser: {},
-        // summarymonthtrunk: {},
-        // summaryperuser: {},
-        // summarypertrunk: {},
-        // callarchive: {},
-        // summarymonthdid: {},
-    }
-    routes = {
-        providers: PROVIDERS_ENDPOINT(this),
-        trunks: TRUNKS_ENDPOINT(this),
-        trunkgroups: TRUNKGROUPS_ENDPOINT(this),
-        // providerrates: {},
-        // servers: {},
-        // trunkerrors: {},
-    }
-    settings = {
-        // menus: {},
-        // groupusers: {},
-        // configuration: {},
-        // emailstemplates: {},
-        // logusers: {},
-        // smtp: {},
-        // failtoban: {},
-        // api: {},
-        // grouptoadmins: {},
-        // backup: {},
-        // alarms: {},
-    }
+    // clients = {
+    //     users: USER_ENDPOINT(this),
+    //     sipusers: SIP_ENDPOINT(this),
+    //     callsonline: CALLONLINE_ENDPOINT(this),
+    //     callerid: CALLERID_ENDPOINT(this),
+    //     atalinksys: ATALINKSYS_ENDPOINT(this), // unstable
+    //     //Restricted Number // TODO
+    //     //IAX // TODO
+    //     //User History // TODO
+    // }
+    // billing = {
+    //     refill: REFILL_ENDPOINT(this),
+    //     //paymentmethods: {} // TODO
+    //     //voucher: {} // TODO
+    //     //refillproviders: {} // TODO
+    // }
+    // dids = {
+    //     dids: DIDS_ENDPOINT(this),
+    //     diddestination: DIDDESTINATION_ENDPOINT(this), // arrumar o edit type
+    //     // didsuse: {},
+    //     // ivrs: {},
+    //     // queues: {},
+    //     // queuesmembers: {},
+    //     // queuedashboard: {},
+    //     // holidays: {},
+    //     // didhistory: {},
+    // }
+    // rates = {
+    //     plans: PLANS_ENDPOINT(this),
+    //     tariffs: TARIFFS_ENDPOINT(this),
+    //     prefixes: PREFIXES_ENDPOINT(this),
+    //     // usercustomrates: {},
+    //     offers: OFFERS_ENDPOINT(this),
+    //     // offercdr: {},
+    //     // offeruse: {},
+    // }
+    // reports = {
+    //     cdr: CDR_ENDPOINT(this),
+    //     // cdrfailed: {},
+    //     // summaryperday: {},
+    //     // summarydayuser: {},
+    //     // summarydaytrunk: {},
+    //     // summarydayagent: {},
+    //     // summarypermonth: {},
+    //     // summarymonthuser: {},
+    //     // summarymonthtrunk: {},
+    //     // summaryperuser: {},
+    //     // summarypertrunk: {},
+    //     // callarchive: {},
+    //     // summarymonthdid: {},
+    // }
+    // routes = {
+    //     providers: PROVIDERS_ENDPOINT(this),
+    //     trunks: TRUNKS_ENDPOINT(this),
+    //     trunkgroups: TRUNKGROUPS_ENDPOINT(this),
+    //     // providerrates: {},
+    //     // servers: {},
+    //     // trunkerrors: {},
+    // }
+    // settings = {
+    //     // menus: {},
+    //     // groupusers: {},
+    //     // configuration: {},
+    //     // emailstemplates: {},
+    //     // logusers: {},
+    //     // smtp: {},
+    //     // failtoban: {},
+    //     // api: {},
+    //     // grouptoadmins: {},
+    //     // backup: {},
+    //     // alarms: {},
+    // }
 
     // UTILITÁRIOS // ---------------------------------------------------------------------------------------------------
 

@@ -1,8 +1,12 @@
+const path = require("path");
+const { mergeObjects } = require(path.resolve("src/util/utils"));
+
 class EndpointMethodManager {
     constructor(module) {
         this.module = module;
         this.methods = {};
         this.magnus = null;
+        this.moduleRules = null; // module rules from magnus api
         return this;
     }
 
@@ -40,6 +44,7 @@ class EndpointMethodManager {
     // Isso é usado pelo EndpointManager. Não renomeie de forma alguma.
     _bindMagnusBilling(mb) {
         this.magnus = mb;
+
         return this;
     }
 
@@ -76,19 +81,48 @@ class EndpointMethodManager {
     }
 
     getAllRules() {
-        const rulesSummary = {};
-        for (const [methodName, method] of Object.entries(this.methods)) {
-            rulesSummary[methodName] = method.rules;
+    
+        // combine all method's rules with the api's rules
+        const combineMethodRulesWith = (moduleRules) => {
+            const rulesSummary = {};
+            console.log('Module rules: ', moduleRules);
+    
+            for (const [methodName, method] of Object.entries(this.methods)) {
+                console.log(`Method name: ${methodName}`);
+                console.log(`Method rules: ${JSON.stringify(method.rules)}`);
+    
+                rulesSummary[methodName] = mergeObjects(moduleRules, method.rules);
+            }
+            return rulesSummary;
+        };
+    
+        // api rules do not exist yet, fetch, combine and return
+        if (!this.moduleRules) {
+            return this.getMagnusRules()
+                .then((apiRules) => {
+                    this.moduleRules = apiRules;
+                    return combineMethodRulesWith(this.moduleRules); // Combina e retorna
+                })
+                .catch((error) => {
+                    console.error('Error fetching or processing rules:', error);
+                    throw error;
+                });
         }
-        return rulesSummary;
+    
+        // api rules already exist, combine and return
+        return Promise.resolve(combineMethodRulesWith(this.moduleRules));
     }
 
-    async getMagnusRules() {
-        let api_ret = await this.magnus.getFields(this.module)
-        let formatted = await this.magnus.formatApiRequirement(api_ret, 'simple')
-        console.log(api_ret)
-        console.log(formatted)
-        return formatted
+    getMagnusRules() {
+        return this.magnus.getFields(this.module)
+        .then((data) => { // Usando uma arrow function para preservar o escopo de 'this'
+            const formatted = this.magnus.formatApiRequirement(data, 'simple');
+            return formatted;
+        })
+        .catch((error) => {
+            console.error("Error fetching Magnus rules:", error);
+            throw error; // Propaga o erro para ser tratado posteriormente
+        });
     }
 
     test() {

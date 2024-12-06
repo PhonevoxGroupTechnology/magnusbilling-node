@@ -20,4 +20,10 @@ mb.echoResponse = true;
 // console.log(endpoints);
 // endpoints.USER.methods.add.handle('teste')
 
-console.log(mb.epm.endpoint.USER.getMagnusRules())
+mb.epm.endpoint.USER.getAllRules()
+    .then((data) => {
+        console.log('---------------------------------------------------------------------------------')
+        console.log(`Retorno:`)
+        console.log(data)
+        console.log('---------------------------------------------------------------------------------')
+    })

@@ -66,6 +66,40 @@ function getQueryString(request) {
     return new URLSearchParams(request).toString()
 }
 
+function mergeObjects(rule1, rule2) {
+    // Utilizado para mesclar dois arrays de regras
+    // arr1: { test: {required: true, max: 5 } }
+    // arr2: { test: {default: 5} }
+    // mergeRules(arg1, arg2) --->  test: {required: true, max: 5, default: 5} }
+
+    if (typeof rule1 !== 'object' || typeof rule2 !== 'object') {
+        throw new Error('Ambos os parâmetros devem ser objetos');
+    }
+
+    if (Object.keys(rule1).length === 0) return rule2;
+    if (Object.keys(rule2).length === 0) return rule1;
+
+    const result = {};
+
+    for (const key of Object.keys(rule1).concat(Object.keys(rule2))) {
+        const props1 = rule1[key] || {};
+        const props2 = rule2[key] || {};
+
+        const mergedProps = { ...props1, ...props2 };
+        const propsKeys = Object.keys(mergedProps);
+
+        for (const propKey of propsKeys) {
+            if (props1.hasOwnProperty(propKey) && props2.hasOwnProperty(propKey) && props1[propKey] !== props2[propKey]) {
+                throw new Error(`Conflito encontrado para a propriedade '${propKey}' na chave '${key}'`);
+            }
+        }
+
+        result[key] = mergedProps;
+    }
+
+    return result;
+};
+
 module.exports = {
     interpretarOperador,
     isFloat,
@@ -74,5 +108,6 @@ module.exports = {
     createNonce,
     getQueryString,
     sha256,
-    envBool
+    envBool,
+    mergeObjects
 }
