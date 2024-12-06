@@ -16,16 +16,26 @@ mb.echoResponse = true;
 
 // ------------------------------------------------------------------
 
-// mb.newEndpoints.clients.users.add({email: 'testando@hotmail.com', username: 'testando', password: 'testeat923h8f32h98ifj2'})
+// mb.newEndpoints.clients.user.add({email: 'testando@hotmail.com', username: 'testando', password: 'testeat923h8f32h98ifj2'})
 // console.log( mb.newEndpoints.clients.sip.add({id_user: 2, secret: '3f2hfu234iho23', defaultuser: '65156165198', name: '3298hf32', callerid: '5518991627865'}) )
 // console.log(endpoints);
 // endpoints.USER.methods.add.handle('teste')
 
-mb.epm.endpoint.USER.getAllRules()
+
+
+mb.newEndpoints.clients.user.add({email: 'teste@123.com', username: 'testinggdsgds', password: 'df32f23gf43g'})
     .then((data) => {
-        for (const [method, rules] of Object.entries(data)) {
-            console.log('---------------------------------------------------------------------------------', method)
-            console.log('Method: ', method)
-            console.log(createMDTable(rules))
-        } 
+        // console.log(createMDTable(data))
+        console.log(data)
     })
+
+
+// Create MD Table for all of USER endpoints (clients.users)
+// mb.epm.endpoint.USER.getAllRules()
+//     .then((data) => {
+//         for (const [method, rules] of Object.entries(data)) {
+//             console.log('---------------------------------------------------------------------------------', method)
+//             console.log('Method: ', method)
+//             console.log(createMDTable(rules))
+//         } 
+//     })

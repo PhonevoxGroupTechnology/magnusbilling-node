@@ -324,7 +324,6 @@ class MagnusBilling {
 
         // Mesclando as regras de {module} vindas da API e da configuração do Endpoint 
         const argumentRules = this.mergeRules(USER_RULES, API_RULES)
-        console.log(this.createMDTable(argumentRules));
         const ENDPOINT_CONFIG = {
             action,
             module,
