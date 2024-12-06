@@ -18,7 +18,6 @@ function envBool(param) {
     return (String(param).toLowerCase() === 'true');
 }
 
-
 function interpretarOperador(op) {
     switch (op) {
         case '=':
@@ -100,6 +99,72 @@ function mergeObjects(rule1, rule2) {
     return result;
 };
 
+// Usando o simplificado, gera uma tabela markdown.
+function createMDTable(obj) {
+
+    let emptyCell = "-"
+    let markdownTable = "Key | Required | Default | Type | Min | Max \n"
+    markdownTable += "--- | --- | --- | --- | --- | ---\n";
+
+    // generate the "type" column based on present keys
+    const getType = (argument) => {
+
+        if (argument.numerical && argument.integerOnly) {
+            return "integer";
+        }
+        if (argument.numerical && ! argument.integerOnly) {
+            return "number";
+        }
+        if (argument.type) {
+            return argument.type;
+        }
+
+        return "string"; // i am not sure: we didnt find a specific type, so im assuming string
+    }
+
+    // generate the "default" column based on present keys
+    const getDefault = (argument) => {
+
+        if (argument.default) {
+            return argument.default
+        }
+
+        if (argument.fixed) {
+            return `${argument.fixed} (immutable)`
+        }
+
+        return emptyCell;
+    }
+
+
+    // preparing each row data
+    let rows = [];
+    for (const key in obj) {
+        const required = obj[key].required ? "yes" : "no";
+        const default_value = getDefault(obj[key])
+        const type = getType(obj[key]);
+        const min = obj[key].minLength ? obj[key].minLength : emptyCell;
+        const max = obj[key].maxLength ? obj[key].maxLength : emptyCell;
+        rows.push({ key, required, default_value, type, min, max });
+    }
+
+    // sorting rows
+    rows.sort((a, b) => {
+        if (a.required === b.required) {
+            return a.key.localeCompare(b.key); // Ordena por key se required for igual
+        }
+        return a.required === "yes" ? -1 : 1; // "yes" vem antes de "no"
+    });
+    
+    // generating table
+    for (const row of rows) {
+        markdownTable += `${row.key} | ${row.required} | ${row.default_value} | ${row.type} | ${row.min} | ${row.max}\n`;
+    }
+
+    return markdownTable
+
+}
+
 module.exports = {
     interpretarOperador,
     isFloat,
@@ -109,5 +174,6 @@ module.exports = {
     getQueryString,
     sha256,
     envBool,
-    mergeObjects
+    mergeObjects,
+    createMDTable
 }

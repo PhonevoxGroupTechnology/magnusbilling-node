@@ -8,11 +8,14 @@ const endpoint = new EndpointMethodManager(MODULE);
 endpoint.addMethod('add', {
     action: 'save',
     rules: {
-        active: {default: 1},
-        id_group: {default: 3}, // client
-        createUser: {required: true, fixed: 1}, // obrigatório para CRIAR user
-        id: {fixed: 0}, // obrigatório para CRIAR user
+        active: {default: 1, type: 'integer'},
+        id_group: {default: 3, type: 'integer'}, // client
+        createUser: {required: true, fixed: 1, type: 'integer'}, // obrigatório para CRIAR user
+        id: {fixed: 0, type: 'integer'}, // obrigatório para CRIAR user
         email: {required: true}, // na web nao é obrigatório, mas aqui é. vai entender
+    },
+    config: {
+        merge_api_rules: true
     },
     handle: async (data, magnus, module, action, rules) => {
         const generatedEndpoint = await magnus.generateEndpoint(action, module, rules);
@@ -23,7 +26,10 @@ endpoint.addMethod('add', {
 endpoint.addMethod('edit', {
     action: 'save',
     rules: {
-        id: {required: true}
+        id: {required: true, type: 'integer'}
+    },
+    config: {
+        merge_api_rules: true
     },
     handle: async (data, magnus, module, action, rules) => {
         const generatedEndpoint = await magnus.generateEndpoint(action, module, rules, true);
@@ -34,7 +40,7 @@ endpoint.addMethod('edit', {
 endpoint.addMethod('remove', {
     action: 'destroy',
     rules: {
-        id: {required: true}
+        id: {required: true, type: 'integer'}
     },
     handle: async (data, magnus, module, action, rules) => {
         const generatedEndpoint = await magnus.generateEndpoint(action, module, rules);
@@ -45,7 +51,7 @@ endpoint.addMethod('remove', {
 endpoint.addMethod('find', {
     action: 'read',
     rules: {
-        filtro: {required: true}
+        filtro: {required: true, type: 'filter array'}
     },
     handle: async (data, magnus, module, action, rules) => {
         const generatedEndpoint = await magnus.generateEndpoint(action, module, rules);
@@ -66,7 +72,7 @@ endpoint.addMethod('list', {
 endpoint.addMethod('getid', {
     action: 'read',
     rules: {
-        filtro: {required: true}
+        filtro: {required: true, type: 'filter array'}
     },
     handle: async (data, magnus, module, action, rules) => {
         const generatedEndpoint = await magnus.generateEndpoint(action, module, rules);

@@ -54,7 +54,7 @@ class EndpointMethodManager {
     //     rules: {a: "b"}, 
     //     handle: (YOUR_PARAMETER, magnus, module, action, rules) => {}
     // })
-    addMethod(name, { action, rules, handle }) {
+    addMethod(name, { action, rules, config = {}, handle }) {
         if (this.methods[name]) {
             throw new Error(`Método '${name}' já existe.`);
         }
@@ -63,6 +63,7 @@ class EndpointMethodManager {
         this.methods[name] = {
             action,
             rules,
+            config,
             handle: this._createHandler(handle, action, rules)
         };
         return this;
@@ -85,12 +86,20 @@ class EndpointMethodManager {
         // combine all method's rules with the api's rules
         const combineMethodRulesWith = (moduleRules) => {
             const rulesSummary = {};
-            console.log('Module rules: ', moduleRules);
+            // console.log('Module rules: ', moduleRules);
     
             for (const [methodName, method] of Object.entries(this.methods)) {
-                console.log(`Method name: ${methodName}`);
-                console.log(`Method rules: ${JSON.stringify(method.rules)}`);
-    
+                
+                // console.log(`Method name: ${methodName}`);
+                // console.log(`Method rules: ${JSON.stringify(method.rules)}`);
+
+                // method is not supposed to merge with api rules
+                if (!method.config.merge_api_rules) {
+                    console.log('========================> SKIPPING OVER METHOD ' + methodName);
+                    rulesSummary[methodName] = method.rules;
+                    continue
+                }
+
                 rulesSummary[methodName] = mergeObjects(moduleRules, method.rules);
             }
             return rulesSummary;
