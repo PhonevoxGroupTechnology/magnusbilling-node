@@ -1,13 +1,32 @@
-import User from '../models/UserModel.js'
+import User from '../../models/clients/UserModel.js'
 
-const MagnusModel = new Magnus()
-
-export default class MagnusController {
+const UserModel = new User();
+export default class UserController {
     constructor() {
     }
 
-    testUser(req, res) {
-        const result_clientes_existentes = MagnusModel.getClientes()
-        res.send(result_clientes_existentes)
+    async create(req, res) {
+        return res.json('batata')
+    }
+
+    async get(req, res) {
+        res.send('get')
+    }
+
+    async getById(req, res) {
+        res.send('getById')
+    }
+
+    async update(req, res) {
+        res.send('update')
+    }
+
+    async delete(req, res) {
+        res.send('delete')
+    }
+
+    async getRules(req, res) {
+        console.log('inside controller:getrules')
+        return res.json(await UserModel.getRules())
     }
 }

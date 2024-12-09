@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import magnus_route from '../controllers/MagnusController.js';
-import MagnusController from '../controllers/MagnusController.js';
-const Controller = new MagnusController();
+import routerUser from './clients/UserRoute.js';
 
 const router = Router();
-router.use('/magnus/testuser', Controller.testUser);
-// router.use('/magnus/outracoisa', Controller.outracoisa);
 
-export default router
+router.use('/clients', routerUser);
+
+export default function getRouter() {
+    return router;
+}
