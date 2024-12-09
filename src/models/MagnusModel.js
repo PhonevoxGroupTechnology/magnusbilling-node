@@ -83,8 +83,6 @@ export default class MagnusModel {
         } catch (error) {
             logger.error(`Error sending request to ${request_url}`)
             logger.error(error)
-            // logger.info(`${error.config.method}:${error.config.url} [${error.config.data}]`)
-            throw new Error(error).stack // bruh
         }
     }
 }

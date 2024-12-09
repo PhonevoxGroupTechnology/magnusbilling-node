@@ -1,14 +1,14 @@
 import Magnus from '../models/MagnusModel.js'
 
-const MagnusModel = new Magnus()
+const MagnusModel = new Magnus();
 
 export default class MagnusController {
     constructor() {
     }
 
-    testUser(req, res) {
-
-        const result_clientes_existentes = MagnusModel.getClientes()
-        res.send(result_clientes_existentes)
+    // Use this to send requests straight to MagnusModel.query
+    // api/tests/query
+    async _testQuery(req, res) {
+        return res.json(await MagnusModel.query(req.body))
     }
 }
