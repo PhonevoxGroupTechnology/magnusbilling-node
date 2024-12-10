@@ -1,8 +1,7 @@
-import winston from 'winston';
+import 'dotenv/config';
 import path from 'path';
+import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
-import dotenv from 'dotenv';
-dotenv.config();
 
 
 // QUICK USAGE:

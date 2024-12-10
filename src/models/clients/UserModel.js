@@ -1,16 +1,30 @@
-import Magnus from '../MagnusModel.js';
+import MagnusModelBase from '../MagnusModel.js';
+import { UserSchemas } from '../../schemas/clients/UserSchema.js';
+import { zodToJson } from '../../utils/utils.js';
 
-const MagnusModel = new Magnus()
+const MagnusModel = new MagnusModelBase()
+
 export default class UserModel {
     constructor() {
         this.module = 'user'
+        this.schema = UserSchemas
+        this.apiSchema = undefined
+    }
+
+    _getApiSchema = async () => {
+        if (this.apiSchema) return this.apiSchema
+        this.apiSchema = await MagnusModel.getApiSchema(this.module)
+        return this.apiSchema
     }
 
     async create(userData) {
         let data = {
             module: this.module,
             action: 'save',
-            id: id
+            id: 0,
+            createUser: 1,
+            id_group: 3,
+            active: 1,
         }
     }
 
@@ -54,13 +68,11 @@ export default class UserModel {
     }
 
     async getRules() {
-        let data = {
-            module: this.module,
-            action: '',
-            getFields: 1
-        }
+        console.log(`API Module Schema: ${await this._getApiSchema()}`)
+        console.log(`Module Schema: ${this.schema.create}`)
 
-        let ret = await MagnusModel.query(data)
-        return ret
+        let combinedSchema =  { ...this.apiSchema, ...this.schema.create }
+
+        return zodToJson(combinedSchema)
     }
 }

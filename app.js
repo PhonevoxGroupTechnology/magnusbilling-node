@@ -1,8 +1,7 @@
-import dotenv from 'dotenv';
+import 'dotenv/config';
 import Logger from './src/utils/logging.js';
 import express from 'express';
 import cors from 'cors';
-dotenv.config();
 
 import getRouter from './src/routes/index.js';
 const logger = new Logger('app', false).useEnvConfig().create()

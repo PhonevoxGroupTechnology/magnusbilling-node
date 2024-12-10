@@ -1,4 +1,87 @@
 import { createHash } from 'crypto';
+import { z } from 'zod';
+
+// this is REALLY simplified.
+export const zodToJson = (zodSchema) => {
+    const schemaDetails = {};
+
+    // Função recursiva para processar cada campo
+    const processField = (field) => {
+        const fieldDetails = {};
+
+        // Verificando se o campo é opcional
+        if (field instanceof z.ZodOptional) {
+            fieldDetails.required = false;
+            field = field._def.innerType;  // Vamos pegar o tipo "interno" para continuar o processamento
+        } else {
+            fieldDetails.required = true;  // Definido como "required" por padrão
+        }
+
+        // Verificando se o campo é um número (inteiro ou não)
+        if (field instanceof z.ZodNumber) {
+            fieldDetails.type = "number";
+
+            if (field._def.checks) {
+                field._def.checks.forEach((check) => {
+                    if (check.kind === "int") {
+                        fieldDetails.integer = true;
+                    }
+                    if (check.kind === "min") {
+                        fieldDetails.min = check.value;
+                    }
+                    if (check.kind === "max") {
+                        fieldDetails.max = check.value;
+                    }
+                    if (check.kind === "gte") {
+                        fieldDetails.gte = check.value;
+                    }
+                    if (check.kind === "lte") {
+                        fieldDetails.lte = check.value;
+                    }
+                });
+            }
+        }
+
+        // Verificando se o campo é uma string
+        if (field instanceof z.ZodString) {
+            fieldDetails.type = "string";
+
+            if (field._def.checks) {
+                field._def.checks.forEach((check) => {
+                    if (check.kind === "min") {
+                        fieldDetails.minLength = check.value;
+                    }
+                    if (check.kind === "max") {
+                        fieldDetails.maxLength = check.value;
+                    }
+                    if (check.kind === "email") {
+                        fieldDetails.email = true;
+                    }
+                });
+            }
+        }
+
+        // Tratando valores padrões
+        if (field instanceof z.ZodDefault) {
+            fieldDetails.default = field._def.defaultValue();
+        }
+
+        return fieldDetails;
+    };
+
+    // Processando o esquema Zod
+    const shape = zodSchema._def.shape();
+
+    for (const key in shape) {
+        const field = shape[key];
+        const fieldDetails = processField(field);
+        schemaDetails[key] = fieldDetails;
+    }
+
+    return schemaDetails;
+};
+
+
 
 export const sha256 = (x, y = {digest: hex}) => {
     let hash = createHash('sha256').update(x);
