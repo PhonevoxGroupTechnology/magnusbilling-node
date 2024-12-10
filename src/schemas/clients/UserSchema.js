@@ -4,8 +4,8 @@ import { z } from "zod";
 const CreateUserSchema = z.object({
   active: z.number().default(1), // active tem valor padrão 1
   id_group: z.number().default(3), // id_group tem valor padrão 3
-  createUser: z.number().int().min(1, { message: "createUser é obrigatório e fixo como 1" }),
-  id: z.number().int().max(0, { message: "id é obrigatório e fixo como 0" }),
+  createUser: z.number().int().default(1).optional(),
+  id: z.number().int().default(0).optional(),
   email: z.string().email({ message: "Email inválido" }).nonempty("Email é obrigatório"),
 });
 

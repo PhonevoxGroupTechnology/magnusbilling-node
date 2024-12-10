@@ -1,5 +1,5 @@
 import expressRateLimit from 'express-rate-limit'
-import Logger from '../utils/Logger.js'
+import Logger from '../utils/logging.js'
 
 const logger = new Logger('middlewares.ratelimit').useEnvConfig().create()
 

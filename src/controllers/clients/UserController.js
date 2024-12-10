@@ -6,22 +6,30 @@ class UserController {
     constructor() {
     }
 
-    async create(req, res) {
-        let payload = req.body
-        // validate request data
-
-        // DELETE "module" and "action" from request data. this CANNOT propagate.
-        delete payload.module
-        delete payload.action
-
-        // call model to create user
-        await UserModel.createUser(payload)
-
-        // validate response
-        // format response if needed
-
-        // return
-        return res.json('batata')
+    async create(req, res, next) {
+        try {
+            let payload = req.body
+            // validate request data
+            let schema = await UserModel.combineWithApi(UserSchema.create)
+            schema.parse(payload)
+    
+            // DELETE "module" and "action" from request data. this CANNOT propagate.
+            delete payload.module
+            delete payload.action
+            delete payload.createUser
+            delete payload.id
+            
+            // call model to create user
+            let ret = await UserModel.create(payload)
+    
+            // validate response
+            // format response if needed
+    
+            // return
+            return res.json(ret)   
+        } catch (error) {
+            return next(error)
+        }
     }
 
     async get(req, res) {

@@ -24,7 +24,7 @@ class UserModel {
     combineWithApi = async (schema) => {
         let apiSchema = await this.getApiSchema()
         let combined = z.object({ ...apiSchema.shape, ...schema.shape })
-        return zodToJson(combined)
+        return combined
     }
 
     async create(userData) {
@@ -33,9 +33,10 @@ class UserModel {
             action: 'save',
             id: 0,
             createUser: 1,
-            id_group: 3,
-            active: 1,
+            ...userData
         }
+
+        return await MagnusModel.query(data)
     }
 
     async update(id, updatedData) {

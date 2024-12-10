@@ -1,5 +1,20 @@
 import { createHash } from 'crypto';
 import { z } from 'zod';
+import bcrypt from 'bcrypt';
+import Logger from './logging.js';
+
+const logger = new Logger('utils').useEnvConfig().create();
+
+export const bcryptPassword = async (password, saltRounds) => {
+    try {
+        const salt = await bcrypt.genSalt(saltRounds);
+        const hashedPassword = await bcrypt.hash(password, salt);
+        return hashedPassword;
+    } catch (err) {
+        throw new Error('Error trying to encrypt password: ' + err.message);
+    }
+
+}
 
 // this is REALLY simplified.
 export const zodToJson = (zodSchema) => {
