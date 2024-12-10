@@ -1,20 +1,30 @@
-import MagnusModelBase from '../MagnusModel.js';
+import MagnusModel from '../MagnusModel.js';
 import { UserSchemas } from '../../schemas/clients/UserSchema.js';
 import { zodToJson } from '../../utils/utils.js';
+import Logger from '../../utils/logging.js';
+import { z } from 'zod';
 
-const MagnusModel = new MagnusModelBase()
+const logger = new Logger('UserModel', false).useEnvConfig().create();
 
-export default class UserModel {
+class UserModel {
     constructor() {
         this.module = 'user'
         this.schema = UserSchemas
         this.apiSchema = undefined
     }
 
-    _getApiSchema = async () => {
+    // singleton so you dont have to send this request every time
+    getApiSchema = async () => {
         if (this.apiSchema) return this.apiSchema
         this.apiSchema = await MagnusModel.getApiSchema(this.module)
         return this.apiSchema
+    }
+    
+    // simple method to combine api schema with some other schema needed
+    combineWithApi = async (schema) => {
+        let apiSchema = await this.getApiSchema()
+        let combined = z.object({ ...apiSchema.shape, ...schema.shape })
+        return zodToJson(combined)
     }
 
     async create(userData) {
@@ -68,11 +78,9 @@ export default class UserModel {
     }
 
     async getRules() {
-        console.log(`API Module Schema: ${await this._getApiSchema()}`)
-        console.log(`Module Schema: ${this.schema.create}`)
-
-        let combinedSchema =  { ...this.apiSchema, ...this.schema.create }
-
-        return zodToJson(combinedSchema)
+        let apiSchema = await this.getApiSchema()
+        return zodToJson(apiSchema)
     }
 }
+
+export default new UserModel()

@@ -136,7 +136,7 @@ const parseApiRules = (rules, returnAsSchema = false) => {
     return fineFormat
 }
 
-export default class MagnusModel {
+class MagnusModel {
     constructor() {
         this.API_KEY = process.env.MAGNUS_API_KEY
         this.API_SECRET = process.env.MAGNUS_API_SECRET
@@ -199,3 +199,5 @@ export default class MagnusModel {
         }
     }
 }
+
+export default new MagnusModel()

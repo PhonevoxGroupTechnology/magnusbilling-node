@@ -79,9 +79,7 @@ export const zodToJson = (zodSchema) => {
     }
 
     return schemaDetails;
-};
-
-
+}
 
 export const sha256 = (x, y = {digest: hex}) => {
     let hash = createHash('sha256').update(x);
@@ -93,10 +91,6 @@ export const sha256 = (x, y = {digest: hex}) => {
         default:
             throw new Error("Unknown digest");
     }
-}
-
-export const envBool = (param) => {
-    return (String(param).toLowerCase() === 'true');
 }
 
 export const interpretarOperador = (op) => {
@@ -113,14 +107,6 @@ export const interpretarOperador = (op) => {
     }
 }
 
-export const arrayHasKey = (obj, keyName) => {
-    if (Object.keys(obj).indexOf(keyName) !== -1) {
-        return true;
-    } else {
-        return false;
-    }
-};
-
 export const isFloat = (value) => {
     if (
       typeof value === 'number' &&
@@ -132,53 +118,6 @@ export const isFloat = (value) => {
   
     return false;
 }
-
-export const isSet = (value) => {
-    return value !== undefined && value !== null;
-}
-
-export const createNonce = () => {
-    const mt = new Date().getTime().toString();
-    return mt.slice(-10) + mt.substr(2, 6);
-}
-
-export const getQueryString = (request) => {
-    return new URLSearchParams(request).toString()
-}
-
-export const mergeObjects = (rule1, rule2) => {
-    // Utilizado para mesclar dois arrays de regras
-    // arr1: { test: {required: true, max: 5 } }
-    // arr2: { test: {default: 5} }
-    // mergeRules(arg1, arg2) --->  test: {required: true, max: 5, default: 5} }
-
-    if (typeof rule1 !== 'object' || typeof rule2 !== 'object') {
-        throw new Error('Ambos os parâmetros devem ser objetos');
-    }
-
-    if (Object.keys(rule1).length === 0) return rule2;
-    if (Object.keys(rule2).length === 0) return rule1;
-
-    const result = {};
-
-    for (const key of Object.keys(rule1).concat(Object.keys(rule2))) {
-        const props1 = rule1[key] || {};
-        const props2 = rule2[key] || {};
-
-        const mergedProps = { ...props1, ...props2 };
-        const propsKeys = Object.keys(mergedProps);
-
-        for (const propKey of propsKeys) {
-            if (props1.hasOwnProperty(propKey) && props2.hasOwnProperty(propKey) && props1[propKey] !== props2[propKey]) {
-                throw new Error(`Conflito encontrado para a propriedade '${propKey}' na chave '${key}'`);
-            }
-        }
-
-        result[key] = mergedProps;
-    }
-
-    return result;
-};
 
 // Usando o simplificado, gera uma tabela markdown.
 export const createMDTable = (obj) => {

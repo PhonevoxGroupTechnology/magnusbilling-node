@@ -1,9 +1,8 @@
-import User from '../../models/clients/UserModel.js'
+import UserModel from '../../models/clients/UserModel.js'
 
-const UserModel = new User();
-const UserSchema = User.schema
+const UserSchema = UserModel.schema
 
-export default class UserController {
+class UserController {
     constructor() {
     }
 
@@ -50,3 +49,5 @@ export default class UserController {
         return res.status(404).json({error: 'something happened'})
     }
 }
+
+export default new UserController()

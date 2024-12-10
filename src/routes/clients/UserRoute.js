@@ -2,13 +2,11 @@ import { Router } from 'express';
 import UserController from '../../controllers/clients/UserController.js';
 const router = Router();
 
-const Controller = new UserController();
-
-router.post('/user', Controller.create)
-router.get('/user', Controller.get)
-router.get('/user/rules', Controller.getRules) // this has to be above the /:id routes, else it will treat as id
-router.get('/user/:id', Controller.getById)
-router.put('/user/:id', Controller.update)
-router.delete('/user/:id', Controller.delete)
+router.post('/user', UserController.create)
+router.get('/user', UserController.get)
+router.get('/user/rules', UserController.getRules) // this has to be above the /:id routes, else it will treat as id
+router.get('/user/:id', UserController.getById)
+router.put('/user/:id', UserController.update)
+router.delete('/user/:id', UserController.delete)
 
 export default router;

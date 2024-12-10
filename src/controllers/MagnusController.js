@@ -1,8 +1,6 @@
-import MagnusModelBase from '../models/MagnusModel.js'
+import MagnusModel from '../models/MagnusModel.js'
 
-const MagnusModel = new MagnusModelBase();
-
-export default class MagnusController {
+class MagnusController {
     constructor() {
     }
 
@@ -21,3 +19,5 @@ export default class MagnusController {
         res.json(rules)
     }
 }
+
+export default new MagnusController()
