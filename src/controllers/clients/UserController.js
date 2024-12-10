@@ -9,6 +9,7 @@ class UserController {
     async create(req, res, next) {
         try {
             let payload = req.body
+
             // validate request data
             let schema = await UserModel.combineWithApi(UserSchema.create)
             schema.parse(payload)
@@ -33,6 +34,30 @@ class UserController {
     }
 
     async get(req, res) {
+        // if theres no payload, do a full get of every user
+        // if there IS payload, get specifically what the payload asks for
+
+        // get takes their payload ONLY from the query string.
+
+        let payload = req.query
+
+        if (!payload) {
+            // no payload, clean get: get all users
+            let userList = await UserModel.list()
+            return res.json(userList)
+        }
+
+        // filtered get: get specific user
+
+        // parse payload
+        UserModel.list()
+
+        // straight find, "like"
+        UserModel.find()
+
+        let schema = UserSchema.read
+
+        schema.parse(payload)
         res.send('get')
     }
 
