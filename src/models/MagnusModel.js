@@ -8,6 +8,10 @@ import { z } from 'zod';
 
 const logger = new Logger('MagnusModel', false).useEnvConfig().create();
 
+/**
+ * Generates a Nonce for querying Magnus
+ * @returns {string} - Nonce as string
+ */
 const generateNonce = () => {
     let nonce = new Date().getTime().toString();
     nonce = nonce.slice(-10) + nonce.substr(2,6);
@@ -16,7 +20,12 @@ const generateNonce = () => {
     return nonce
 }
 
-// sign data using api secret. necessary for querying magnus
+/**
+ * This is necessary to query Magnus
+ * @param {string} data - Data to sign
+ * @param {string} secret - Secret to use for signing
+ * @returns {string} - Signed data
+ */
 const signData = (data, secret) => {
     let hmac = createHmac('sha512', secret); // hmac512
     let content_aware_hmac = hmac.update(data); // content-aware hmac512
@@ -27,35 +36,53 @@ const signData = (data, secret) => {
     return sign
 }
 
-// receives the rules from getFields query, and parse in an easier-to-read way
-const parseApiRules = (rules, returnAsSchema = false) => {
+/**
+ * Utilitary that transforms a specific kind of formatted Object into a zod schema
+ * this, precisely, expects the object returned by parseApiRules()
+ * @param {Object} obj - Object from parseApiRules() result.
+ * @param {boolean} skeleton - If true, return only the structure of the schema, not the validation rules (makes everything z.string.optional() basically )
+ * @returns {Object} - A z.object() object (also known as zod schema)
+ */
+const transformToZod = (obj, skeleton = false) => {
+    const schema = {};
 
-    // transforms an object into a zod schema. depends on some specific keywords
-    const generateZodSchema = (rules) => {
-        const schema = {};
-    
-        for (const [key, rule] of Object.entries(rules)) {
-            let field = z.string(); // generic
-
-            // Primeiro verifica se é inteiro
-            if (rule.integerOnly) field = z.number().int(); 
-
-            // Depois verifica se é um número genérico
-            if (rule.numerical && !rule.integerOnly) field = z.number();
-
-            // Adiciona validações adicionais
-            if (rule.minLength) field = field.min(rule.minLength);
-            if (rule.maxLength) field = field.max(rule.maxLength);
-            if (!rule.required) field = field.optional();
-
-            // Debugging para verificar o tipo
-            // console.log(`Campo ${key}: ${field.constructor.name}`);
-            schema[key] = field;
-        }
-    
-        return z.object(schema);
+    const defineType = (rule) => {
+        let type = z.string();
+        if (rule.integerOnly) type = z.number().int();
+        if (rule.numerical && !rule.integerOnly) type = z.number();
+        return type
     }
 
+    const defineValidation = (field, rule) => {
+        if (rule.minLength) field = field.min(rule.minLength);
+        if (rule.maxLength) field = field.max(rule.maxLength);
+        if (!rule.required) field = field.optional();
+        return field
+    }
+
+    for (const [key, rule] of Object.entries(obj)) {
+        if (skeleton) { 
+            // we only want the structure
+            schema[key] = z.string().optional();
+            continue;
+        }
+
+        let field
+        field = defineType(rule)
+        field = defineValidation(field, rule)
+        schema[key] = field;
+    }
+    
+    return z.object(schema);
+}
+
+/**
+ * Receives the rules straight from Magnus api, and formats to a more fitting format
+ * this format can eventually be used into the transformToZod() function, to make a schema out of it
+ * @param {*} rules - Raw array of rules obtained from "MagnusModel.getRules(<module>)"
+ * @returns {Object} - Formatted rules object, as {field: {required: true, numerical: true, maxLength: 5}} etc..
+ */
+const parseApiRules = (rules, blocked_parameters=[]) => {
     // crude processing 
     // (this is just used as a step to get to fineFormat)
     // im lazy to straight up mash fineFormat here
@@ -129,10 +156,16 @@ const parseApiRules = (rules, returnAsSchema = false) => {
         });
     }
 
-    // returning
-    if (returnAsSchema) {
-        return generateZodSchema(fineFormat);
+    // blocking parameters before returning the parsed data
+    for (const [parameter, rules] of Object.entries(fineFormat)) {
+        console.log('The parameter is: ', parameter)
+        if (blocked_parameters.includes(parameter)) {
+            console.log('Blocking parameter ', parameter)
+            delete fineFormat[parameter]
+        }
     }
+
+    // returning
     return fineFormat
 }
 
@@ -143,20 +176,34 @@ class MagnusModel {
         this.PUBLIC_URL = process.env.MAGNUS_PUBLIC_URL
     }
 
-    async getApiSchema(module) {
-        return await this.getRules(module, true)
-    }
+    /**
+     * This function receives a module and returns the rules for that module
+     * @param {*} module - The module to get the rules for
+     * @param {boolean} schema - If true, returns a Zod Object
+     * @param {boolean} skeleton - If true, returns a Zod Object with only the structure (everything is optional and string)
+     * @returns {*} - Parsed rules. May vary depending on booleans used
+     */
+    async getRules(module, schema=false, skeleton=false, block_param=[]) {
+        let ret
 
-    async getRules(module, parseAsZodObject = false) {
+        if (skeleton && !schema ) {
+            logger.warn(`${module}: Skeleton was requested, but we are not building a schema. This will be ignored.`)
+        }
+
+        // raw rule from api
         let rules = await this.query({
             module: module,
             action: '',
             getFields: 1
         })
 
-        // This breaks the "MRC" format. This is not the Model's job. Oh well.
-        if (rules) { rules = parseApiRules(rules, parseAsZodObject) }
-        return rules
+        if (rules) {
+            ret = parseApiRules(rules, block_param) // basic parse
+            if (schema) {
+                ret = transformToZod(ret, skeleton) // zod object parse
+            }
+        }
+        return ret
     }
 
     async query(data) {

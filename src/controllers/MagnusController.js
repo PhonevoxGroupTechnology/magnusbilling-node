@@ -1,4 +1,5 @@
 import MagnusModel from '../models/MagnusModel.js'
+import { zodToJson } from '../utils/utils.js';
 
 class MagnusController {
     constructor() {
@@ -14,7 +15,8 @@ class MagnusController {
     // api/tests/rules/:module
     async _getParsedRule(req, res) {
         const { module } = req.params;
-        let rules = await MagnusModel.getRules(module)
+        let rules = await MagnusModel.getRules(module, false, true)
+        // rules = zodToJson(rules)
 
         res.json(rules)
     }
