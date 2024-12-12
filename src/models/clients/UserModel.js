@@ -37,12 +37,14 @@ class UserModel {
         return await MagnusModel.query(payload)
     }
 
-    async update(id, updatedData) {
-        let data = {
+    async update(userPayload) {
+        let payload = {
+            ...userPayload,
             module: this.module,
             action: 'save',
-            id: id
         }
+
+        return await MagnusModel.query(payload)
     }
 
     async delete(id) {

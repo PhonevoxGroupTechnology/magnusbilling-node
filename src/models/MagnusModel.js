@@ -10,7 +10,8 @@ const logger = new Logger('MagnusModel', false).useEnvConfig().create();
 
 /**
  * Generates a Nonce for querying Magnus
- * @returns {string} - Nonce as string
+ * 
+ * @returns - Nonce as string
  */
 const generateNonce = () => {
     let nonce = new Date().getTime().toString();
@@ -22,9 +23,11 @@ const generateNonce = () => {
 
 /**
  * This is necessary to query Magnus
- * @param {string} data - Data to sign
+ * 
+ * @param {string} data   - Data to sign
  * @param {string} secret - Secret to use for signing
- * @returns {string} - Signed data
+ * 
+ * @returns               - Signed data
  */
 const signData = (data, secret) => {
     let hmac = createHmac('sha512', secret); // hmac512
@@ -39,9 +42,11 @@ const signData = (data, secret) => {
 /**
  * Utilitary that transforms a specific kind of formatted Object into a zod schema
  * this, precisely, expects the object returned by parseApiRules()
- * @param {Object} obj - Object from parseApiRules() result.
+ * 
+ * @param {Object}  obj      - Object from parseApiRules() result.
  * @param {boolean} skeleton - If true, return only the structure of the schema, not the validation rules (makes everything z.string.optional() basically )
- * @returns {Object} - A z.object() object (also known as zod schema)
+ * 
+ * @returns                  - A z.object() object (also known as zod schema)
  */
 const transformToZod = (obj, skeleton = false) => {
     const schema = {};
@@ -63,7 +68,10 @@ const transformToZod = (obj, skeleton = false) => {
     for (const [key, rule] of Object.entries(obj)) {
         if (skeleton) { 
             // we only want the structure
-            schema[key] = z.string().optional();
+            // schema[key] = z.any().min(1).optional();
+            schema[key] = z.any().refine((val) => val !== null && val !== undefined && val !== '', {
+                message: 'Cannot be empty',
+            }).optional();
             continue;
         }
 
@@ -79,8 +87,10 @@ const transformToZod = (obj, skeleton = false) => {
 /**
  * Receives the rules straight from Magnus api, and formats to a more fitting format
  * this format can eventually be used into the transformToZod() function, to make a schema out of it
+ * 
  * @param {*} rules - Raw array of rules obtained from "MagnusModel.getRules(<module>)"
- * @returns {Object} - Formatted rules object, as {field: {required: true, numerical: true, maxLength: 5}} etc..
+ * 
+ * @returns         - Formatted rules object, as {field: {required: true, numerical: true, maxLength: 5}} etc..
  */
 const parseApiRules = (rules, blocked_parameters=[]) => {
     // crude processing 
@@ -178,10 +188,12 @@ class MagnusModel {
 
     /**
      * This function receives a module and returns the rules for that module
-     * @param {*} module - The module to get the rules for
-     * @param {boolean} schema - If true, returns a Zod Object
+     * 
+     * @param {*} module         - The module to get the rules for
+     * @param {boolean} schema   - If true, returns a Zod Object
      * @param {boolean} skeleton - If true, returns a Zod Object with only the structure (everything is optional and string)
-     * @returns {*} - Parsed rules. May vary depending on booleans used
+     * 
+     * @returns                  - Parsed rules. May vary depending on booleans used
      */
     async getRules(module, schema=false, skeleton=false, block_param=[]) {
         let ret

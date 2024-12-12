@@ -49,11 +49,11 @@ class UserController {
             // since we wont really be having multi-parameter routes, i dont mind
             // be mindful about this anyways.
             const handlers = {
-                id: (params) => filterify({ id: params.id }),
-                username: (params) => filterify({ username: params.username }),
-                query: (params) => {
+                id: async (params) => filterify({ id: params.id }),
+                username: async (params) => filterify({ username: params.username }),
+                query: async (params) => {
                     // validating schema structure
-                    const API_SCHEMA = UserModel.getRules({ as_schema: true, as_skeleton: true });
+                    const API_SCHEMA = await UserModel.getRules({ as_schema: true, as_skeleton: true });
                     const SCHEMA = UserSchema.read().merge(API_SCHEMA);
                     SCHEMA.strict().parse(params.query);
     
@@ -84,20 +84,42 @@ class UserController {
         }
     }
 
+    // CHORE(adrian): optimize this. i hate this implementation
     async update(req, res, next) {
         try {
             const handlers = {
-                id: (params) => {
-                    
+                id: async (params, body) => {
+                    // validating schema structure
+                    console.log('Updating id user: ', params.id)
+                    const API_SCHEMA = await UserModel.getRules({ as_schema: true, as_skeleton: true });
+                    const SCHEMA = UserSchema.read().merge(API_SCHEMA);
+                    SCHEMA.strict().parse(body);
+                    return {id: params.id, ...body}
                 },
-                username: (params) => {
-
+                username: async (params, body) => {
+                    let result = await UserModel.find(filterify({ username: params.username }))
+                    let userId = result.rows[0].id // this can fail. i will NOT validate the result. fuck you
+                    return handlers.id({ id: userId }, body)
                 },
             };
+
+            let payload;
+            let bodyNotEmpty = Object.keys(req.body).length > 0
+
+            // get the appropriate handler based on the request parameters
+            if (req.params.id && bodyNotEmpty) {
+                payload = await handlers.id(req.params, req.body);
+            } else if (req.params.username && bodyNotEmpty) {
+                payload = await handlers.username(req.params, req.body);
+            } else {
+                return res.status(400).json({ error: 'Invalid request parameters' });
+            }
+
+            return res.json(await UserModel.update(payload))
+
         } catch (error) {
             next(error)
         }
-        res.send('update')
     }
 
     async delete(req, res, next) {

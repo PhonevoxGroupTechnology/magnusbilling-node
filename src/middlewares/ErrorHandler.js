@@ -23,7 +23,7 @@ export const handleUnexpected = (err, req, res, next) => {
     // handling zod errors
     if (isZodError(err)) {
         let error = formatZodErrors(err);
-        logger.debug(`[VALIDATE ERROR] ${req.logprefix} Failed to validate on schema: ${JSON.stringify(error)}`);
+        logger.debug(`[VALIDATE ERROR] ${req.logprefix} ${JSON.stringify(error)}`);
         return res.status(400).json({error: error});
     }
 
