@@ -1,30 +1,31 @@
 import { z } from "zod";
 
 class UserSchema {
-  // Schema de criação de usuário
+
+  // what is needed to create an user (besides api requirements)
   static create() {
     return z.object({
       active: z.number().default(1),
       id_group: z.number().default(3),
-      email: z.string().email({ message: "Email inválido" }).nonempty("Email é obrigatório"),
+      email: z.string().email({ message: "Email inválido" }).min(1, "Email é obrigatório"),
     });
   }
 
-  // Schema de atualização de usuário
+  // what is needed to update an user (besides api requirements)
   static update() {
     return z.object({
       id: z.number().int({ message: "id é obrigatório para editar" }),
     });
   }
 
-  // Schema de leitura de usuário
+  // what is needed to read an user (along with api structure)
   static read() {
     return z.object({
-      filtro: z.array(z.any()).nonempty({ message: "Filtro é obrigatório" }),
+      id: z.string().optional(),
     });
   }
 
-  // Schema de remoção de usuário
+  // you can only delete by id
   static delete() {
     return z.object({
       id: z.number().int({ message: "id é obrigatório para remoção" }),

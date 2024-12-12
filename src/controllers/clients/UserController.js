@@ -24,30 +24,18 @@ class UserController {
         try {
             let payload = req.body
 
-            // validate request data
-            // first: get the entire api schema
+            // Validate user data
             let API_SCHEMA = await UserModel.getRules({ as_schema: true})
             let SCHEMA = UserSchema.create().merge(API_SCHEMA)
             SCHEMA.strict().parse(payload)
-
-            // let rules = await MagnusModel.getRules(module, false, true)
-            // let FINAL_SCHEMA = ValidatorModel.mergeSchemas(BASE_SCHEMA, API_SCHEMA)
-            // await UserModel.combineApiSchema(UserSchema.create, { skeleton: true }).parse(payload)
-
-            // ValidatorModel.transformToZod(payload, true)
-
-            // let schema = await UserModel.combineWithApi(UserSchema.create)
-    
-            // DELETE "module" and "action" from request data. this CANNOT propagate.
-            delete payload.id
             
-            // call model to create user
+            // Create user with validated data
             let ret = await UserModel.create(payload)
     
-            // validate response
-            // format response if needed
+            // Validate response
+            // not necessary in this case
     
-            // return
+            // Return the result
             return res.json(ret)   
         } catch (error) {
             return next(error)
@@ -56,58 +44,67 @@ class UserController {
 
     async get(req, res, next) {
         try {
-            // if theres no payload, do a full get of every user
-            // if there IS payload, get specifically what the payload asks for
-
-            // get takes their payload ONLY from the query string.
-
-            let payload = req.query
-            const payloadIsEmpty = Object.keys(payload).length == 0
-
-            if (payloadIsEmpty) {
-                let userList = await UserModel.list()
-                return res.json(userList)
+            // INFO(adrian):
+            // this only really works for single-parameter routes.
+            // since we wont really be having multi-parameter routes, i dont mind
+            // be mindful about this anyways.
+            const handlers = {
+                id: (params) => filterify({ id: params.id }),
+                username: (params) => filterify({ username: params.username }),
+                query: (params) => {
+                    // validating schema structure
+                    const API_SCHEMA = UserModel.getRules({ as_schema: true, as_skeleton: true });
+                    const SCHEMA = UserSchema.read().merge(API_SCHEMA);
+                    SCHEMA.strict().parse(params.query);
+    
+                    return filterify(params.query);
+                },
+            };
+    
+            let payload;
+    
+            // get the appropriate handler based on the request parameters
+            if (req.params.id) {
+                payload = handlers.id(req.params);
+            } else if (req.params.username) {
+                payload = handlers.username(req.params);
+            } else if (Object.keys(req.query).length > 0) {
+                payload = handlers.query({ query: req.query });
+            } else {
+                // no payload, return everything
+                const userList = await UserModel.list();
+                return res.json(userList);
             }
-
-            // filtered get: get specific user
-            // straight find, "like"
-
-            // no need to parse fields, just make sure
-            // user input is clean, no funny business
-            delete payload.module
-            delete payload.action
-
-            // parse payload with api schema
-            let schema = await UserModel.getApiSchema({
-                onlyStructure: true, // dont force requireds and lengths
-            })
-            schema.parse(payload)
-
-            // parse as magnus filter
-            payload = filterify(payload)
-
-
-            let filteredUserList = await UserModel.find(payload)
-
-            return res.json(filteredUserList)
+    
+            // find the user
+            const filteredUserList = await UserModel.find(payload);
+            return res.json(filteredUserList);
         } catch (error) {
             return next(error)
         }
     }
 
-    async getById(req, res) {
-        res.send('getById')
-    }
+    async update(req, res, next) {
+        try {
+            const handlers = {
+                id: (params) => {
+                    
+                },
+                username: (params) => {
 
-    async update(req, res) {
+                },
+            };
+        } catch (error) {
+            next(error)
+        }
         res.send('update')
     }
 
-    async delete(req, res) {
+    async delete(req, res, next) {
         res.send('delete')
     }
 
-    async getRules(req, res) {
+    async getRules(req, res, next) {
         let rules = await UserModel.getRules()
         
         if (rules) {

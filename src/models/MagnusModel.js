@@ -158,7 +158,7 @@ const parseApiRules = (rules, blocked_parameters=[]) => {
 
     // blocking parameters before returning the parsed data
     for (const [parameter, rules] of Object.entries(fineFormat)) {
-        console.log('The parameter is: ', parameter)
+        // console.log('The parameter is: ', parameter)
         if (blocked_parameters.includes(parameter)) {
             console.log('Blocking parameter ', parameter)
             delete fineFormat[parameter]

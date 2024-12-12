@@ -1,7 +1,5 @@
 import MagnusModel from '../MagnusModel.js';
-import { zodToJson } from '../../utils/utils.js';
 import Logger from '../../utils/logging.js';
-import { z } from 'zod';
 
 const logger = new Logger('UserModel', false).useEnvConfig().create();
 
@@ -27,13 +25,13 @@ class UserModel {
         return await MagnusModel.getRules(this.module, as_schema, as_skeleton, block_param)
     }
 
-    async create(userData) {
-        let data = {
+    async create(userPayload) {
+        let payload = {
+            ...userPayload,
             module: this.module,
             action: 'save',
             id: 0,
-            createUser: 1,
-            ...userData
+            createUser: 1
         }
 
         return await MagnusModel.query(data)
