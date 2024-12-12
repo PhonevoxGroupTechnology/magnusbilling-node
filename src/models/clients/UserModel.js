@@ -34,7 +34,7 @@ class UserModel {
             createUser: 1
         }
 
-        return await MagnusModel.query(data)
+        return await MagnusModel.query(payload)
     }
 
     async update(id, updatedData) {

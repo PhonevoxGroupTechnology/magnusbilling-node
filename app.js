@@ -13,6 +13,10 @@ app.use(express.json());
 app.use(setLogPrefix)
 app.use('/api', getRouter());
 
-app.listen(process.env.EXPRESS_PORT, () => {
-    logger.info(`Server is running on port ${process.env.EXPRESS_PORT}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+    app.listen(process.env.EXPRESS_PORT, () => {
+        logger.info(`Server is running on port ${process.env.EXPRESS_PORT}`);
+    });
+}
+
+export default app; // export so it can be used as test

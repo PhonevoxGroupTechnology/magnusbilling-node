@@ -7,12 +7,18 @@
         "dotenv": "^16.4.7",
         "express": "^4.21.2",
         "express-rate-limit": "^7.4.1",
+        "supertest": "^7.0.0",
         "winston": "^3.17.0",
         "winston-daily-rotate-file": "^5.0.0",
         "zod": "^3.24.0",
         "zod-validation-error": "^3.4.0"
     },
     "scripts": {
-        "server": "nodemon --legacy-watch app.js"
+        "server": "nodemon --legacy-watch app.js",
+        "test": "mocha __tests__/*"
+    },
+    "devDependencies": {
+        "chai": "^5.1.2",
+        "mocha": "^11.0.1"
     }
 }
