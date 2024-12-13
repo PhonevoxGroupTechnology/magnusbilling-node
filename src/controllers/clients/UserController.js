@@ -44,10 +44,6 @@ class UserController {
 
     async get(req, res, next) {
         try {
-            // INFO(adrian):
-            // this only really works for single-parameter routes.
-            // since we wont really be having multi-parameter routes, i dont mind
-            // be mindful about this anyways.
             const handlers = {
                 id: async (params) => filterify({ id: params.id }),
                 username: async (params) => filterify({ username: params.username }),
@@ -65,11 +61,11 @@ class UserController {
     
             // get the appropriate handler based on the request parameters
             if (req.params.id) {
-                payload = handlers.id(req.params);
+                payload = await handlers.id(req.params);
             } else if (req.params.username) {
-                payload = handlers.username(req.params);
+                payload = await handlers.username(req.params);
             } else if (Object.keys(req.query).length > 0) {
-                payload = handlers.query({ query: req.query });
+                payload = await handlers.query({ query: req.query });
             } else {
                 // no payload, return everything
                 const userList = await UserModel.list();
@@ -90,7 +86,6 @@ class UserController {
             const handlers = {
                 id: async (params, body) => {
                     // validating schema structure
-                    console.log('Updating id user: ', params.id)
                     const API_SCHEMA = await UserModel.getRules({ as_schema: true, as_skeleton: true });
                     const SCHEMA = UserSchema.read().merge(API_SCHEMA);
                     SCHEMA.strict().parse(body);
@@ -123,7 +118,33 @@ class UserController {
     }
 
     async delete(req, res, next) {
-        res.send('delete')
+        try {
+            const handlers = {
+                id: async (params) => {
+                    return { id: params.id }
+                },
+                username: async (params) => {
+                    let userId = await UserModel.getId(filterify({ username: params.username }))
+                    return handlers.id({ id: userId })
+                },
+            };
+
+            let payload;
+
+            // get the appropriate handler based on the request parameters
+            if (req.params.id) {
+                payload = await handlers.id(req.params);
+            } else if (req.params.username) {
+                payload = await handlers.username(req.params);
+            } else {
+                return res.status(400).json({ error: 'Invalid request parameters' });
+            }
+
+            let ret = await UserModel.delete(payload)
+            return res.json(ret)
+        } catch (error) {
+            next(error)
+        }
     }
 
     async getRules(req, res, next) {
@@ -132,7 +153,7 @@ class UserController {
         if (rules) {
             return res.json(rules)
         }
-        return res.status(404).json({error: 'something happened'})
+        return res.status(404).json({error: 'Uh oh. No rules for this module.'})
     }
 }
 
