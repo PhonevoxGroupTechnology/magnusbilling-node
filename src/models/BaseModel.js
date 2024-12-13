@@ -1,6 +1,5 @@
 import MagnusModel from "./MagnusModel.js";
 import Logger from "../utils/logging.js";
-import { response } from "express";
 
 class MagnusBillingAPI extends Error {
     constructor(message, statusCode = 500) {
