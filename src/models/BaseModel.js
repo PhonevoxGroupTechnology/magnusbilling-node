@@ -1,30 +1,45 @@
 import MagnusModel from "./MagnusModel.js";
+import Logger from "../utils/logging.js";
+import { response } from "express";
 
-class ModelResponder {
+class MagnusBillingAPI extends Error {
+    constructor(message, statusCode = 500) {
+        super(message); // Define a mensagem do erro
+        this.name = 'MagnusBillingAPIError'; // Define o nome do erro
+        this.statusCode = statusCode; // Adiciona um status HTTP opcional
+        Error.captureStackTrace(this, this.constructor); // Captura o stack trace correto
+    }
+}
+
+class ModelReplier {
     /**
-     * Cria uma resposta de sucesso.
-     * @param {string} message - Mensagem informativa.
-     * @param {Object} data - Dados adicionais retornados na resposta.
-     * @returns {Object} Resposta formatada.
+     * Makes a successful response
+     * @param {int} code        - Status code
+     * @param {string} message  - Informative message for response
+     * @param {Object} data     - Additional data for response
+     * @returns {Object}        - Formatted response
      */
-    static success(message, data = {}) {
+    static success(code, message, data = {}) {
         return {
             success: true,
             message,
+            code,
             ...data,
         };
     }
 
     /**
-     * Cria uma resposta de erro.
-     * @param {string} message - Mensagem de erro.
-     * @param {Object} data - Dados adicionais retornados na resposta.
-     * @returns {Object} Resposta formatada.
+     * Makes an errorful response
+     * @param {int} code        - Status code
+     * @param {string} message  - Informative message for response
+     * @param {Object} data     - Additional data for response
+     * @returns {Object}        - Formatted response
      */
-    static error(message, data = {}) {
+    static error(code, message, data = {}) {
         return {
             success: false,
             message,
+            code,
             ...data,
         };
     }
@@ -33,20 +48,21 @@ class ModelResponder {
 class BaseModel {
     constructor(moduleName) {
         this.module = moduleName;
+        this.logger = new Logger(`${moduleName}.model`, false).useEnvConfig().create();
     }
 
     /**
      * Utilitary method to create success responses
      */
-    success(message, data = {}) {
-        return ModelResponder.success(message, data);
+    success(code, message, data = {}) {
+        return ModelReplier.success(code, message, data);
     }
 
     /**
      * Utilitary method to create error responses.
      */
-    error(message, data = {}) {
-        return ModelResponder.error(message, data);
+    error(code, message, data = {}) {
+        return ModelReplier.error(code, message, data);
     }
 
     /**
@@ -54,10 +70,25 @@ class BaseModel {
      */
     async query(payload) {
         try {
-            let query_result = await MagnusModel.query(payload);
-            return this.success('Query executed successfully', { response: query_result });
+            let queryResult = await MagnusModel.query(payload);
+
+            // generic magnus error: it always return this when something goes wrong
+            if (queryResult?.response?.status == 500) {
+                throw new MagnusBillingAPI('MagnusBilling API Error', 500);
+            }
+
+            // query explicitly failed
+            if (queryResult?.success == false) {
+                let MESSAGE = queryResult?.errors;
+                return this.error(undefined, MESSAGE);
+            }
+
+            // this is really idiotic, default behaviour should be throw, but i cant do that since "success" field doesnt
+            // come in every request! (list for example)
+            return this.success(undefined, 'Query executed successfully', { response: queryResult });
+
         } catch (error) {
-            return this.error('Query execution failed', { error });
+            return this.error(error?.code, error?.message ?? 'Query execution failed');
         }
     }
 
@@ -77,9 +108,9 @@ class BaseModel {
             const rules = await MagnusModel.getRules(this.module, as_schema, as_skeleton, block_param);
 
             if (as_schema || as_skeleton) return rules;
-            return this.success('Rules retrieved successfully', { rules });
+            return this.success(200, 'Rules retrieved successfully', { response: {rules} });
         } catch (error) {
-            return this.error('Failed to retrieve rules', { error });
+            return this.error(500, 'Failed to retrieve rules', { error });
         }
     }
 
@@ -101,13 +132,13 @@ class BaseModel {
         };
 
         const result = await this.query(payload); // isso vai começar a retornar d maneira diferente. arrume!!!!
+        console.log(result)
 
+        // formatting create result
         if (result.success) {
-            let MESSAGE = result.msg ?? 'Created';
-            let RETURNED_DATA = result.rows ?? 'nodata';
-            return this.success(MESSAGE, { response: RETURNED_DATA });
+            return this.success(200, undefined, { response: result.response.data ?? 'nodata' });
         }
-        return result;
+        return this.error(500, result?.message, {});
     }
 
     /**
@@ -127,12 +158,18 @@ class BaseModel {
         };
 
         const result = await this.query(payload);
+
+        // formatting update result
         if (result.success) {
-            let MESSAGE = result.msg ?? 'nodata';
-            let RETURNED_DATA = result.rows ?? {};
-            return this.success(MESSAGE, { response: RETURNED_DATA });
+            if (result.response.rows.length > 1) {
+                this.logger.warn('Query updated more than 1 result. This is not supposed to happen.');
+            } else {
+                this.logger.info(`Expectedly updated 1 value.`)
+            }
+
+            return this.success(200, result?.msg, { response: result.response.rows[0] ?? {} });
         }
-        return result;
+        return this.error(500, result?.message);
     }
 
     /**
@@ -153,15 +190,13 @@ class BaseModel {
 
         const result = await this.query(payload);
         if (result?.success) {
-            let MESSAGE = result.msg ?? 'nodata';
-            let RETURNED_DATA = { id: id }; // magnus doesnt return anything, ill return the id
-            return this.success(MESSAGE, { response: RETURNED_DATA });
-        }
+            return this.success(200, result?.msg, { response: {id: id} });
+        } 
         // @FIXME
         // Either if query fails or theres no user with that id, Magnus returns a fucking code 500 for both. 
         // Meaning we have to do an ADDITIONAL QUERY just to check if the user existed in the first place. 
         // I cant assume "500 = we ok", because this could mean a fucking server error for real.
-        return result;
+        return this.error(500, `${result?.message} NOTE: You might want to check if the user actually exists, since we return this same error for non-existing user (blame magnusbilling returns).`, {});
     }
 
     /**
@@ -176,10 +211,12 @@ class BaseModel {
         };
 
         const result = await this.query(payload);
+        console.log(result)
+
         if (result.success) {
-            return this.success('Listed successfully', { response: result });
-        }
-        return result;
+            return this.success(200, 'Listed successfully', { response: result.response });
+        } 
+        return this.error(500, result?.message);
     }
 
     /**
@@ -198,9 +235,9 @@ class BaseModel {
 
         const result = await this.query(payload);
         if (result.success) {
-            return this.success('Found data', { response: result });
+            return this.success(200, 'Found data', { response: result.response });
         }
-        return result;
+        return this.error(500, result?.message);
     }
 
     /**
@@ -219,15 +256,20 @@ class BaseModel {
 
         const result = await this.query(payload);
 
-        if (!result.rows || result.rows.length === 0 || !result.rows[0].id) {
-            return this.error('ID not found', { id: null });
-        }
+        if (result.success) {
 
-        if (result.rows.length > 1) {
-            return this.error('Multiple IDs found', { id: null });
-        }
+            if (!result.response.rows || result.response.rows.length === 0 || !result.response.rows[0].id) {
+                return this.error('ID not found', { id: null });
+            }
 
-        return this.success('ID found', { id: result.rows[0].id });
+            if (result.response.rows.length > 1) {
+                let FOUND_IDS = result.response.rows.map(row => row.id);
+                return this.error('Multiple IDs found', { id: FOUND_IDS });
+            }
+
+            return result.response.rows[0].id
+        }
+        return this.error(500, result?.message);
     }
 }
 

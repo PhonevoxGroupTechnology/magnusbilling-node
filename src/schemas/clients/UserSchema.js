@@ -7,6 +7,7 @@ class UserSchema {
     return z.object({
       active: z.number().default(1),
       id_group: z.number().default(3),
+      active: z.string().default("1"),
       email: z.string().email({ message: "Email inválido" }).min(1, "Email é obrigatório"),
     });
   }

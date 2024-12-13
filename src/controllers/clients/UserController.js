@@ -25,18 +25,13 @@ class UserController {
             let payload = req.body
 
             // Validate user data
-            let API_SCHEMA = await UserModel.getRules({ as_schema: true})
-            let SCHEMA = UserSchema.create().merge(API_SCHEMA)
+            let API_SCHEMA = await UserModel.getRules({ as_schema: true })
+            let SCHEMA = API_SCHEMA.merge(UserSchema.create()) // prioritize schema rules over api (email is causing trouble)
             SCHEMA.strict().parse(payload)
             
             // Create user with validated data
-            let ret = await UserModel.create(payload)
-    
-            // Validate response
-            // not necessary in this case
-    
-            // Return the result
-            return res.json(ret)   
+            let result = await UserModel.create(payload)
+            return res.status(result.code).json(result)
         } catch (error) {
             return next(error)
         }
@@ -50,7 +45,7 @@ class UserController {
                 query: async (params) => {
                     // validating schema structure
                     const API_SCHEMA = await UserModel.getRules({ as_schema: true, as_skeleton: true });
-                    const SCHEMA = UserSchema.read().merge(API_SCHEMA);
+                    const SCHEMA = API_SCHEMA.merge(UserSchema.read())
                     SCHEMA.strict().parse(params.query);
     
                     return filterify(params.query);
@@ -87,13 +82,12 @@ class UserController {
                 id: async (params, body) => {
                     // validating schema structure
                     const API_SCHEMA = await UserModel.getRules({ as_schema: true, as_skeleton: true });
-                    const SCHEMA = UserSchema.read().merge(API_SCHEMA);
+                    const SCHEMA = API_SCHEMA.merge(UserSchema.read());
                     SCHEMA.strict().parse(body);
                     return {id: params.id, ...body}
                 },
                 username: async (params, body) => {
-                    let result = await UserModel.find(filterify({ username: params.username }))
-                    let userId = result.rows[0].id // this can fail. i will NOT validate the result. fuck you
+                    let userId = await UserModel.getId(filterify({ username: params.username }))
                     return handlers.id({ id: userId }, body)
                 },
             };
@@ -110,7 +104,8 @@ class UserController {
                 return res.status(400).json({ error: 'Invalid request parameters' });
             }
 
-            return res.json(await UserModel.update(payload))
+            let result = await UserModel.update(payload)
+            return res.status(result.code).json(result)
 
         } catch (error) {
             next(error)

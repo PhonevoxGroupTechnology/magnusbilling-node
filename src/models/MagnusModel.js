@@ -242,8 +242,9 @@ class MagnusModel {
         logger.debug(`- Headers: ${JSON.stringify(headers)}`)
         logger.debug(`- Body: ${post_data}`)
 
+        let response
         try {
-            const response = await axios.post(request_url, post_data, {
+            response = await axios.post(request_url, post_data, {
                 headers: headers,
                 httpAgent: protocol === http ? agent : undefined,
                 httpsAgent: protocol === https ? agent : undefined,
@@ -253,8 +254,8 @@ class MagnusModel {
             logger.trace(`- Response: ${JSON.stringify(response.data)}`)
             return response.data;
         } catch (error) {
-            logger.error(`Error sending request to ${request_url}`)
-            logger.error(error)
+            logger.error(`Failed to send request to ${request_url}: ${error}`)
+            return error
         }
     }
 }
