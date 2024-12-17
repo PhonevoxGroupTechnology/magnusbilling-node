@@ -1,3 +1,4 @@
+import { number } from 'zod';
 import { logging } from '../utils/logging.js';
 
 class BaseController {
@@ -139,6 +140,44 @@ class BaseController {
         } catch (error) {
             next(error)
             
+        }
+    }
+
+    update = async (req, res, next) => {
+        try {
+            let idToUpdate;
+            let payload;
+            let result;
+
+            payload = req.body
+
+            this.logger.info(`${req.logprefix} Validating sent data:\n${JSON.stringify(payload)}`)
+            let schema = await this.getSchema({ as_skeleton: true, block_api_param: ['id']})
+            schema.strict().parse(payload)
+
+            // 1: get param, and check if id is there
+            if (!req.params.id) {
+                // 2: there is no id, we need to search it first
+                this.logger.info(`${req.logprefix} Searching the actual id, because no id was provided:\n${JSON.stringify(req.params)}`)
+                idToUpdate = await this.Model.getId(this.filterify(req.params))
+            } else {
+                idToUpdate = req.params.id
+            }
+            this.logger.info(`${req.logprefix} Id to be updated: ${idToUpdate}`)
+
+            payload = {
+                ...payload,
+                id: parseInt(idToUpdate)
+            }
+
+            // 3: validate body
+            
+
+            // 4: we have payload validated, we have id to update, we can proceed
+            result = await this.Model.update(payload)
+            return res.status(result.code).json(result)
+        } catch (error) {
+            next(error)
         }
     }
 

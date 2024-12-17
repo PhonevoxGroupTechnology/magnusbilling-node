@@ -8,7 +8,7 @@ class UserController extends BaseController {
     }
 
     // CHORE(adrian): optimize this. i hate this implementation
-    update = async (req, res, next) => {
+    _update = async (req, res, next) => {
         try {
             const handlers = {
                 id: async (params, body) => {
