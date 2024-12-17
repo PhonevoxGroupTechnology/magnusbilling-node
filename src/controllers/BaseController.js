@@ -181,6 +181,37 @@ class BaseController {
         }
     }
 
+    delete = async (req, res, next) => {
+        let idToDelete
+        try {
+            let payload;
+            let result;
+
+            if (!req.params.id) {
+                this.logger.info(`${req.logprefix} Searching the actual id, because no id was provided:\n${JSON.stringify(req.params)}`)
+                idToDelete = await this.Model.getId(this.filterify(req.params))
+            } else {
+                idToDelete = req.params.id
+                idToDelete = await this.Model.getId(this.filterify(req.params))
+            }
+
+            if (idToDelete?.success == false) {
+                return res.status(idToDelete.code).json(idToDelete)
+            }
+            
+            this.logger.info(`${req.logprefix} Id to be deleted: ${JSON.stringify(idToDelete)}`)
+
+            payload = {
+                id: parseInt(idToDelete)
+            }
+
+            result = await this.Model.delete(payload)
+            return res.status(result.code).json(result)
+        } catch (error) {
+            next(error)
+        }
+    }
+
 }
 
 export default BaseController;

@@ -194,6 +194,8 @@ class BaseModel {
         // Either if query fails or theres no user with that id, Magnus returns a fucking code 500 for both. 
         // Meaning we have to do an ADDITIONAL QUERY just to check if the user existed in the first place. 
         // I cant assume "500 = we ok", because this could mean a fucking server error for real.
+
+
         return this.error(500, `${result?.message} NOTE: You might want to check if the user actually exists, since we return this same error for non-existing user (blame magnusbilling returns).`, {});
     }
 
@@ -256,12 +258,12 @@ class BaseModel {
         if (result.success) {
 
             if (!result.response.rows || result.response.rows.length === 0 || !result.response.rows[0].id) {
-                return this.error('ID not found', { id: null });
+                return this.error(404, 'ID not found', { id: null });
             }
 
             if (result.response.rows.length > 1) {
                 let FOUND_IDS = result.response.rows.map(row => row.id);
-                return this.error('Multiple IDs found', { id: FOUND_IDS });
+                return this.error(409, 'Multiple IDs found', { id: FOUND_IDS });
             }
 
             return result.response.rows[0].id
