@@ -155,9 +155,7 @@ class BaseController {
             let schema = await this.getSchema({ as_skeleton: true, block_api_param: ['id']})
             schema.strict().parse(payload)
 
-            // 1: get param, and check if id is there
             if (!req.params.id) {
-                // 2: there is no id, we need to search it first
                 this.logger.info(`${req.logprefix} Searching the actual id, because no id was provided:\n${JSON.stringify(req.params)}`)
                 idToUpdate = await this.Model.getId(this.filterify(req.params))
             } else {
@@ -170,10 +168,6 @@ class BaseController {
                 id: parseInt(idToUpdate)
             }
 
-            // 3: validate body
-            
-
-            // 4: we have payload validated, we have id to update, we can proceed
             result = await this.Model.update(payload)
             return res.status(result.code).json(result)
         } catch (error) {
@@ -186,19 +180,12 @@ class BaseController {
         try {
             let payload;
             let result;
-
-            if (!req.params.id) {
-                this.logger.info(`${req.logprefix} Searching the actual id, because no id was provided:\n${JSON.stringify(req.params)}`)
-                idToDelete = await this.Model.getId(this.filterify(req.params))
-            } else {
-                idToDelete = req.params.id
-                idToDelete = await this.Model.getId(this.filterify(req.params))
-            }
-
+            
+            idToDelete = await this.Model.getId(this.filterify(req.params))
             if (idToDelete?.success == false) {
                 return res.status(idToDelete.code).json(idToDelete)
             }
-            
+
             this.logger.info(`${req.logprefix} Id to be deleted: ${JSON.stringify(idToDelete)}`)
 
             payload = {
