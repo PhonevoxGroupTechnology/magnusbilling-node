@@ -33,6 +33,7 @@ class BaseController {
         let RET_SCHEMA // schema to return
 
         // get api schema
+        // @TODO(adrian): cache this shit, I dont want to request it all the time
         let API_SCHEMA = await this.Model.getRules({
             as_schema: true, 
             as_skeleton: as_skeleton,
@@ -100,6 +101,40 @@ class BaseController {
             return next(error)
         }
     }
+
+    query = async (req, res, next) => {
+        try {
+            const handlers = {
+                query: async (query) => {
+                    this.logger.info(`${req.logprefix} Validating query`)
+                    let schema = await this.getSchema({merge_with: this.Schema.read(), as_skeleton: true})
+                    schema.strict().parse(query)
+    
+                    return this.filterify(query);
+                }
+            }
+
+            const isQuery = Object.keys(req.query).length > 0
+            let payload;
+            let result;
+
+            if (!isQuery) {
+                // not a query, list everything
+                this.logger.info(`${req.logprefix} Listing...`)
+                result = await this.Model.list();
+                return res.status(result.code).json(result);
+            }
+
+            // it is a query: validate parameters and send foward
+            payload = await handlers.query(req.query)
+            result = await this.Model.find(payload);
+            return res.status(result.code).json(result);
+        } catch (error) {
+            next(error)
+            
+        }
+    }
+
 }
 
 export default BaseController;

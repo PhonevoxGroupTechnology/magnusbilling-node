@@ -7,6 +7,20 @@ class UserController extends BaseController {
         super(UserSchema, UserModel);
     }
 
+    getByUsername = async (req, res, next) => {
+        try {
+            let payload;
+            const { username } = req.params
+
+            payload = this.filterify({ username: username })
+            filteredUserList = await UserModel.find(username)
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    
+
     get = async (req, res, next) => {
         try {
             const handlers = {
