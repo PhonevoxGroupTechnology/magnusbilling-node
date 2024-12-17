@@ -238,9 +238,9 @@ class MagnusModel {
         const agent = new protocol.Agent({
             rejectUnauthorized: false,
         })
-        logger.info(`Sending request to ${request_url}`)
-        logger.debug(`- Headers: ${JSON.stringify(headers)}`)
-        logger.debug(`- Body: ${post_data}`)
+        logger.debug(`Sending request to ${request_url}\n${JSON.stringify(post_data)}`)
+        logger.trace(`- Headers: ${JSON.stringify(headers)}`)
+        logger.trace(`- Body: ${post_data}`)
 
         let response
         try {
@@ -250,7 +250,7 @@ class MagnusModel {
                 httpsAgent: protocol === https ? agent : undefined,
             })
 
-            logger.info(`Received response from ${request_url}`)
+            logger.debug(`Received response from ${request_url}\n${JSON.stringify(response.data)}`)
             logger.trace(`- Response: ${JSON.stringify(response.data)}`)
             return response.data;
         } catch (error) {

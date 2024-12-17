@@ -131,7 +131,6 @@ class BaseModel {
         };
 
         const result = await this.query(payload); // isso vai começar a retornar d maneira diferente. arrume!!!!
-        console.log(result)
 
         // formatting create result
         if (result.success) {
@@ -210,7 +209,6 @@ class BaseModel {
         };
 
         const result = await this.query(payload);
-        console.log(result)
 
         if (result.success) {
             return this.success(200, 'Listed successfully', { response: result.response });

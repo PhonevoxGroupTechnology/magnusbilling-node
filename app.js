@@ -24,7 +24,7 @@ if (process.env.NODE_ENV !== 'test') {
     app.listen(process.env.EXPRESS_PORT, () => {
         api_logger.addTransport(transport_console);
         api_logger.addTransport(transport_file);
-        api_logger.setLevel('unit')
+        api_logger.setLevel('debug')
         api_logger.info(`Server is running on port ${process.env.EXPRESS_PORT}`);
     });
 }

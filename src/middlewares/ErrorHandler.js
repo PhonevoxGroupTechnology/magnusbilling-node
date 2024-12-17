@@ -2,6 +2,7 @@ import { ZodError } from 'zod';
 import { logging } from '../utils/logging.js';
 
 const logger = logging.getLogger('api.middlewares.errorhandler');
+const validation_logger = logging.getLogger('api.validation');
 
 const isZodError = (err) => { if (err instanceof ZodError) return true; return false; };
 
@@ -21,11 +22,11 @@ export const handleUnexpected = (err, req, res, next) => {
     // handling zod errors
     if (isZodError(err)) {
         let error = formatZodErrors(err);
-        logger.debug(`[VALIDATE ERROR] ${req.logprefix} ${JSON.stringify(error)}`);
-        return res.status(400).json({error: error});
+        validation_logger.warn(`${req.logprefix} Validation error: ${JSON.stringify(error)}`);
+        return res.status(400).json({success: false, code: 400, response: {}, errors: error});
     }
 
     // unexpected errors
-    logger.critical(`[GENERIC ERROR] ${req.logprefix} ${err.stack}`)
-    return res.status(500).json({error: 'Uh oh. Something went wrong. For more information, check server logs.'});
+    logger.critical(`${req.logprefix} Generic error: ${err.stack}`)
+    return res.status(500).json({success: false, code: 500, response: {}, errors: 'Uh oh. Something went wrong. For more information, check server logs.'});
 }

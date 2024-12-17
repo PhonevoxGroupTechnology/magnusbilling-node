@@ -27,6 +27,7 @@ class BaseController {
 
     // return the zod schema of a given controller. if prioritize_api is true, prioritize the api schema over the controller schema on merge. if as_skeleton is true, return the skeleton of the schema (everything as z.any().optional()) so we can match the fields. if block_api_param has anything inside the list, block the given parameters when doing api rule parsing
     getSchema = async (options = { prioritize_api: false, merge_with: undefined, as_skeleton: false, block_api_param: [] }) => {
+        this.logger.debug(`We are going to request API's data to build the schema. Options: ${Object.keys(options).join(', ')}`)
         const { prioritize_api=false, merge_with=undefined, as_skeleton=false, block_api_param=[] } = options;
 
         let RET_SCHEMA // schema to return
@@ -49,6 +50,7 @@ class BaseController {
             RET_SCHEMA = API_SCHEMA
         }
 
+        this.logger.debug(`We successfully built the schema.`)
         return RET_SCHEMA
     }
 
@@ -69,6 +71,31 @@ class BaseController {
                     data: null
                 })
             }
+        } catch (error) {
+            return next(error)
+        }
+    }
+
+    // ----------------------------------------------------------------------------------------------------
+    // CRUD functions
+
+    create = async (req, res, next) => {
+        try {
+            this.logger.info(`${req.logprefix} Received payload:\n${JSON.stringify(req.body)}`)
+            let payload = req.body
+
+            // validate data
+            this.logger.info(`${req.logprefix} Validating payload...`)
+            let schema = await this.getSchema({ merge_with: this.Schema.create() })
+            schema.strict().parse(payload)
+            
+            // create with validated data
+            this.logger.info(`${req.logprefix} Creating...`)
+            let result = await this.Model.create(payload)
+
+            this.logger.info(`${req.logprefix} Returning result:\n${JSON.stringify(result)}`)
+            return res.status(result.code).json(result)
+
         } catch (error) {
             return next(error)
         }
