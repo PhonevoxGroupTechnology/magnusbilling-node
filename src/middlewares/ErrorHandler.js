@@ -22,11 +22,11 @@ export const handleUnexpected = (err, req, res, next) => {
     // handling zod errors
     if (isZodError(err)) {
         let error = formatZodErrors(err);
-        validation_logger.warn(`${req.logprefix} Validation error: ${JSON.stringify(error)}`);
+        validation_logger.warn(`${req.logprefix} Validation error:\n${JSON.stringify(error)}`);
         return res.status(400).json({success: false, code: 400, response: {}, errors: error});
     }
 
     // unexpected errors
-    logger.critical(`${req.logprefix} Generic error: ${err.stack}`)
+    logger.critical(`${req.logprefix} Generic error:\n${err.stack}`)
     return res.status(500).json({success: false, code: 500, response: {}, errors: 'Uh oh. Something went wrong. For more information, check server logs.'});
 }

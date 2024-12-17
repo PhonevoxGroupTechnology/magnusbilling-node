@@ -7,57 +7,6 @@ class UserController extends BaseController {
         super(UserSchema, UserModel);
     }
 
-    getByUsername = async (req, res, next) => {
-        try {
-            let payload;
-            const { username } = req.params
-
-            payload = this.filterify({ username: username })
-            filteredUserList = await UserModel.find(username)
-        } catch (error) {
-            next(error)
-        }
-    }
-
-    
-
-    get = async (req, res, next) => {
-        try {
-            const handlers = {
-                id: async (params) => this.filterify({ id: params.id }),
-                username: async (params) => this.filterify({ username: params.username }),
-                query: async (params) => {
-                    // validating schema structure
-                    let schema = await this.getSchema({merge_with: UserSchema.read(), as_skeleton: true})
-                    schema.strict().parse(params.query)
-    
-                    return this.filterify(params.query);
-                },
-            };
-    
-            let payload;
-    
-            // get the appropriate handler based on the request parameters
-            if (req.params.id) {
-                payload = await handlers.id(req.params);
-            } else if (req.params.username) {
-                payload = await handlers.username(req.params);
-            } else if (Object.keys(req.query).length > 0) {
-                payload = await handlers.query({ query: req.query });
-            } else {
-                // no payload, return everything
-                const userList = await UserModel.list();
-                return res.json(userList);
-            }
-    
-            // find the user
-            const filteredUserList = await UserModel.find(payload);
-            return res.json(filteredUserList);
-        } catch (error) {
-            return next(error)
-        }
-    }
-
     // CHORE(adrian): optimize this. i hate this implementation
     update = async (req, res, next) => {
         try {

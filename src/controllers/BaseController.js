@@ -106,7 +106,7 @@ class BaseController {
         try {
             const handlers = {
                 query: async (query) => {
-                    this.logger.info(`${req.logprefix} Validating query`)
+                    this.logger.info(`${req.logprefix} Validating query\n${JSON.stringify(query)}`)
                     let schema = await this.getSchema({merge_with: this.Schema.read(), as_skeleton: true})
                     schema.strict().parse(query)
     
@@ -115,18 +115,25 @@ class BaseController {
             }
 
             const isQuery = Object.keys(req.query).length > 0
+            const hasParam = Object.keys(req.params).length > 0
+            let search_data;
             let payload;
             let result;
 
-            if (!isQuery) {
-                // not a query, list everything
+
+            if (isQuery) {
+                search_data = req.query
+            } else if (hasParam) {
+                search_data = req.params
+            } else {
+                // not a query nor param search, list everything
                 this.logger.info(`${req.logprefix} Listing...`)
                 result = await this.Model.list();
                 return res.status(result.code).json(result);
             }
 
             // it is a query: validate parameters and send foward
-            payload = await handlers.query(req.query)
+            payload = await handlers.query(search_data);
             result = await this.Model.find(payload);
             return res.status(result.code).json(result);
         } catch (error) {
