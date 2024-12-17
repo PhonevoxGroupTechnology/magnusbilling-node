@@ -1,10 +1,10 @@
-import Logger from '../utils/logging.js';
+import { logging } from '../utils/logging.js';
 
 class BaseController {
     constructor(ControllerSchema, ControllerModel) {
         this.Schema = ControllerSchema
         this.Model = ControllerModel;
-        this.logger = new Logger(`base.controller`, false).useEnvConfig().create();
+        this.logger = logging.getLogger(`api.controller.${ControllerModel.module}`);
     }
 
     // functions here NEEDS to be in arrow-function form

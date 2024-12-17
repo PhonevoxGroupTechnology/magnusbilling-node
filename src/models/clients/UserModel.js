@@ -1,7 +1,7 @@
-import Logger from '../../utils/logging.js';
+import { logging } from '../../utils/logging.js';
 import BaseModel from '../BaseModel.js';
 
-const logger = new Logger('UserModel', false).useEnvConfig().create();
+const logger = logging.getLogger('api.model.user');
 
 class UserModel extends BaseModel {
     constructor() {

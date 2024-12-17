@@ -1,7 +1,7 @@
 // Importing Logger
-import Logger from '../utils/logging.js';
+import { logging } from '../utils/logging.js';
 
-const logger = new Logger('middlewares.index').useEnvConfig().create();
+const logger = logging.getLogger('api.middlewares.index');
 
 // Importing middleware functions
 import { handleUnexpected } from './ErrorHandler.js';

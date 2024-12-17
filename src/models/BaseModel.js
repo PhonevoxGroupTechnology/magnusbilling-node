@@ -1,5 +1,5 @@
 import MagnusModel from "./MagnusModel.js";
-import Logger from "../utils/logging.js";
+import { logging } from '../utils/logging.js';
 
 class MagnusBillingAPI extends Error {
     constructor(message, statusCode = 500) {
@@ -47,7 +47,7 @@ class ModelReplier {
 class BaseModel {
     constructor(moduleName) {
         this.module = moduleName;
-        this.logger = new Logger(`${moduleName}.model`, false).useEnvConfig().create();
+        this.logger = logging.getLogger(`api.model.${this.module}`);
     }
 
     /**

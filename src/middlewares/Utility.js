@@ -1,7 +1,7 @@
-import { bcryptPassword } from '../utils/utils.js'
-import Logger from '../utils/logging.js';
+import { bcryptPassword } from '../utils/utils.js';
+import { logging } from '../utils/logging.js';
 
-const logger = new Logger('middlewares.utility').useEnvConfig().create();
+const logger = logging.getLogger('api.middlewares.utility');
 
 export const getClientIp = (req) => {
     const ip = req.ip.includes('::ffff:') ? req.ip.split(':')[3] : req.ip;

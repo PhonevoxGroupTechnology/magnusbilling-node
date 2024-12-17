@@ -1,7 +1,7 @@
 import expressRateLimit from 'express-rate-limit'
-import Logger from '../utils/logging.js'
+import { logging } from '../utils/logging.js';
 
-const logger = new Logger('middlewares.ratelimit').useEnvConfig().create()
+const logger = logging.getLogger('api.middlewares.ratelimit');
 
 const AUTH_RATELIMIT_WINDOW_MINUTES = 15
 const AUTH_RATELIMIT_MAX_REQUESTS = 999

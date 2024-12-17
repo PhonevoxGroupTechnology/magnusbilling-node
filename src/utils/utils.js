@@ -1,9 +1,9 @@
 import { createHash } from 'crypto';
 import { z } from 'zod';
 import bcrypt from 'bcrypt';
-import Logger from './logging.js';
+import { logging } from './logging.js';
 
-const logger = new Logger('utils').useEnvConfig().create();
+const logger = logging.getLogger('api.utils');
 
 export const bcryptPassword = async (password, saltRounds) => {
     try {

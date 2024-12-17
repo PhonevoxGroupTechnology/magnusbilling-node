@@ -2,9 +2,19 @@ import axios from "axios";
 import { expect } from 'chai';
 import request from 'supertest';
 import app from '../app.js';
-import Logger from '../src/utils/logging.js';
+import { logging } from '../src/utils/logging.js';
 
-const logger = new Logger('tests.user', false).create();
+const logger = logging.getLogger('test');
+const transport_console = new logging.transports.Console()
+const transport_file = new logging.transports.FileRotate({
+    filename: './logs/test-%DATE%.log',
+    maxSize: '20m',
+    maxFiles: '14d',
+})
+
+logger.addTransport(transport_console);
+logger.addTransport(transport_file);
+logger.setLevel('unit')
 
 let testUser = {
     username: 'mocha_testing',

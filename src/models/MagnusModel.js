@@ -2,11 +2,11 @@ import axios from 'axios';
 import https from 'https';
 import http from 'http';
 import { createHmac } from 'crypto';
-import Logger from '../utils/logging.js';
+import { logging } from '../utils/logging.js'
 import { format } from 'path';
 import { z } from 'zod';
 
-const logger = new Logger('MagnusModel', false).useEnvConfig().create();
+const logger = logging.getLogger('api.model.magnus');
 
 /**
  * Generates a Nonce for querying Magnus

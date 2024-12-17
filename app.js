@@ -1,11 +1,18 @@
 import 'dotenv/config';
-import Logger from './src/utils/logging.js';
+import { logging } from './src/utils/logging.js';
 import express from 'express';
 import cors from 'cors';
 import { setLogPrefix } from './src/middlewares/Utility.js';
 
 import getRouter from './src/routes/index.js';
-const logger = new Logger('app', false).useEnvConfig().create()
+
+const api_logger = logging.getLogger('api');
+const transport_console = new logging.transports.Console()
+const transport_file = new logging.transports.FileRotate({
+    filename: './logs/runtime-%DATE%.log',
+    maxSize: '20m',
+    maxFiles: '14d',
+})
 
 const app = express();
 app.use(cors());
@@ -15,7 +22,10 @@ app.use('/api', getRouter());
 
 if (process.env.NODE_ENV !== 'test') {
     app.listen(process.env.EXPRESS_PORT, () => {
-        logger.info(`Server is running on port ${process.env.EXPRESS_PORT}`);
+        api_logger.addTransport(transport_console);
+        api_logger.addTransport(transport_file);
+        api_logger.setLevel('unit')
+        api_logger.info(`Server is running on port ${process.env.EXPRESS_PORT}`);
     });
 }
 

@@ -1,256 +1,221 @@
-import 'dotenv/config';
-import path from 'path';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 
+const LEVELS = {
+    critical: { level: 0, color: "bold red blackBG" },
+    error: { level: 1, color: "red" },
+    warn: { level: 2, color: "yellow" },
+    info: { level: 3, color: "bold green" },
+    debug: { level: 4, color: "blue" },
+    trace: { level: 5, color: "cyan" },
+    unit: { level: 6, color: "bold cyan" }
+}
 
-// QUICK USAGE:
-// const log = new Logger(NAME, DEBUG_MODE).useEnvConfig().create()
-// const log = new Logger(NAME, DEBUG_MODE).setName('NAME').setLocation('logs/runtime-%DATE%.log').setLevel('unit').setRotate('30d').create()
-// const log = new Logger(NAME, DEBUG_MODE).setName('NAME').setLocation('logs/runtime-%DATE%.log').setConsoleLevel('unit').setFileLevel('unit').setLevel('unit').setRotate('30d').create()
-
-// ENV VARIABLES (if you opt to use ".useEnvConfig()"):
-// LOG_LOCATION=logs/runtime-%DATE%.log # %DATE% Converts to YYYYMMDD  | Same as .setLocation('')
-// LOG_CONSOLE_LEVEL='unit'                                            | Same as .setLevel('') or .setConsoleLevel('')
-// LOG_FILE_LEVEL='unit'                                               | Same as .setLevel('') or .setFileLevel('')
-// LOG_ROTATE_PERIOD=30d                                               | Same as .setRotate('')
-// LOG_DEBUG_MODE=false
-
-
-export default class Logger {
-    constructor(name = undefined, debug = false) {
-
-        this.NAME = name;
-        this.LOCATION = undefined;
-        this.CONSOLE_LEVEL = 'info';
-        this.FILE_LEVEL = 'info';
-        this.ROTATE = '30d';
-        this.WINSTON_LOG = undefined;
-        this.DEBUG_MODE = debug;
-        this.LEVELS = {
-            critical: {
-                level: 0,
-                color: "bold red blackBG"
-            },
-            error: {
-                level: 1,
-                color: "red"
-            },
-            warn: {
-                level: 2,
-                color: "yellow"
-            },
-            info: {
-                level: 3,
-                color: "bold green"
-            },
-            debug: {
-                level: 4,
-                color: "blue"
-            },
-            trace: {
-                level: 5,
-                color: "cyan"
-            },
-            unit: {
-                level: 6,
-                color: "bold cyan"
-            },
-        }
-
-        // CRITICAL : Erros graves, que impossibilitam a execução, ou há perda de dados importantes.
-        // ERROR    : Erros que exigem atenção imediata, mas não interrompem a execução do sistema.
-        // WARN     : Erro não-direto, mas que pode causar problemas. Avisos.
-        // INFO     : Eventos úteis, que não indicam problema, apenas para auditoria.
-        // DEBUG    : Informações úteis à depuração.
-        // TRACE    : Informações detalhadas à nível granular. Execução passo-a-passo.
-        // UNIT     : Específicos, testes unitários.
-
-        // Adiciona métodos dinâmicos para cada nível de log
-        this.addLogMethods();
-
+// Função para mapear a cor do LEVELS.color para códigos ANSI
+function getAnsiColor(colorString) {
+    const colorMap = {
+        bold: "\x1b[1m",
+        blackBG: "\x1b[40m",
+        red: "\x1b[31m",
+        green: "\x1b[32m",
+        yellow: "\x1b[33m",
+        blue: "\x1b[34m",
+        cyan: "\x1b[36m",
+        reset: "\x1b[0m"
     }
 
-    // Main
+    // Divide as cores (e.g., "bold red blackBG") e converte cada uma
+    return colorString
+        .split(" ")
+        .map(color => colorMap[color] || "")
+        .join("");
+}
 
-    create() {
-        const isValidLogLevelString = (str, levels) => {
-            if (!(typeof(str) === 'string')) { return }
-            const lowercaseStr = str.toLowerCase();
-            return levels.hasOwnProperty(lowercaseStr);
-        };
+const shutup = new winston.transports.Console({
+    level: 'silent',
+    silent: true
+})
 
-        const systemTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        const LEVELS = this.getLevels()
-        
-        winston.addColors(this.getColors());
-
-        // Se a string for válida, converte para número usando o objeto levels, caso contrário, usa como está
-        const numericLogLevel = isValidLogLevelString(this.CONSOLE_LEVEL, LEVELS) ? LEVELS[this.CONSOLE_LEVEL.toLowerCase()] : parseInt(this.CONSOLE_LEVEL, 10);
-        const numericLogfileLevel =  isValidLogLevelString(this.FILE_LEVEL, LEVELS) ? LEVELS[this.FILE_LEVEL.toLowerCase()] : parseInt(this.FILE_LEVEL, 10);
-
-        // Filtra os níveis com base no consoleLogLevel
-        const filteredLevels = Object.keys(LEVELS).filter(level => LEVELS[level] <= numericLogLevel);
-
-        const transports = [];
-
-        if (filteredLevels.length > 0) {
-            const consoleTransport = new winston.transports.Console({
-                format: winston.format.combine(
-                    winston.format.colorize({ all: true }),
-                    winston.format.label({ label: this.NAME }),
-                    winston.format.timestamp({ format: 'DD/MM/YYYY HH:mm:ss.SSSSSS', tz: systemTimeZone }),
-                    winston.format.printf(({ level, message, label, timestamp }) => {
-                        return `[${timestamp}] [${level}] ${label}: ${message}`;
-                    }),
-                ),
-            });
-    
-            // Configuração de níveis para o transporte do console
-            consoleTransport.level = filteredLevels[filteredLevels.length - 1];
-    
-            transports.push(consoleTransport);
-        }
-    
-        if (numericLogLevel >= numericLogfileLevel) {
-            const fileTransport = new DailyRotateFile({
-                filename: `${this.LOCATION}`,
-                datePattern: 'YYYYMMDD',
-                zippedArchive: true,
-                maxSize: '20m',
-                maxFiles: this.ROTATE,
-                format: winston.format.combine(
-                    winston.format.label({ label: this.NAME }),
-                    winston.format.timestamp({ format: 'DD/MM/YYYY HH:mm:ss.SSSSSS', tz: systemTimeZone }),
-                    winston.format.printf(({ level, message, label, timestamp }) => {
-                        return `[${timestamp}] [${level}] ${label}: ${message}`;
-                    }),
-                ),
-            });
-    
-            // Configuração de níveis para o transporte do arquivo
-            fileTransport.level = filteredLevels[numericLogfileLevel];
-    
-            transports.push(fileTransport);
-        }
-    
-        this.WINSTON_LOG = winston.createLogger({
-            levels: LEVELS,
-            transports: transports,
-        });
-
-        return this;
-
+class EasyConsole {
+    constructor() {
+        this.name = "EasyConsole";
+        this.padding = 8;
+        this.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     }
- 
-    addLogMethods() {
-        Object.keys(this.LEVELS).forEach(level => {
-            this[level] = (message) => {
-                if (this.WINSTON_LOG) {
-                    this.WINSTON_LOG[level](message);
-                    if (this.JOB) {
-                        this.JOB.log(message);
-                    }
-                } else {
-                    console.error('Winston logger is not defined');
-                }
-            };
+
+    gen(name) {
+        return new winston.transports.Console({
+            format: winston.format.combine(
+                winston.format.label({ label: name }),
+                winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS', tz: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+                winston.format.printf(info => {
+                    const { timestamp, level, message, label } = info;
+                    const color = getAnsiColor(LEVELS[level]?.color || "");
+                    const paddedLevel = level.padEnd(8, ' ').toUpperCase();
+                    const reset = "\x1b[0m";
+
+                    return `[${timestamp}] [${color}${paddedLevel}${reset}] ${color}${label}: ${message}${reset}`;
+                }),
+            )
+        })
+    }
+}
+
+class EasyFileRotate {
+    constructor(options) {
+        this.name = "EasyFileRotate";
+        this.padding = 8;
+        this.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        this.filename = options.filename;
+        this.maxSize = options.maxSize;
+        this.maxFiles = options.maxFiles;
+    }
+
+    gen(name) {
+        return new DailyRotateFile({
+            filename: this.filename,
+            datePattern: 'YYYYMMDD',
+            zippedArchive: true,
+            maxSize: this.maxSize,
+            maxFiles: this.maxFiles,
+            format: winston.format.combine(
+                winston.format.uncolorize(),
+                winston.format.label({ label: name }),
+                winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS', tz: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+                winston.format.printf(({ level, message, label, timestamp }) => {
+                    const paddedLevel = level.padEnd(this.padding, ' ').toUpperCase();
+                    return `[${timestamp}] [${paddedLevel}] ${label}: ${message}`;
+                }),
+            ),
         });
     }
+}
 
-    useEnvConfig() {
-        if (this.DEBUG_MODE) {
-            console.log(`"${this.NAME}" Logger: Tentando utilizar as variáveis de ambiente:`)
-            console.log(`"${this.NAME}" Logger: LOG_NAME ${process.env.LOG_NAME}`)
-            console.log(`"${this.NAME}" Logger: LOG_LOCATION ${process.env.LOG_LOCATION}`)
-            console.log(`"${this.NAME}" Logger: LOG_CONSOLE_LEVEL ${process.env.LOG_CONSOLE_LEVEL}`)
-            console.log(`"${this.NAME}" Logger: LOG_FILE_LEVEL ${process.env.LOG_FILE_LEVEL}`)
-            console.log(`"${this.NAME}" Logger: LOG_ROTATE_PERIOD ${process.env.LOG_ROTATE_PERIOD}`)
-            console.log(`"${this.NAME}" Logger: LOG_DEBUG_MODE ${process.env.LOG_DEBUG_MODE}`)
-        }
+class Logger {
+    constructor(builder, name) {
+        this.builder = builder;
+        this.name = name;
+        this.children = undefined;
+        this.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+        this.padding = 8
 
-        this.NAME = process.env.LOG_NAME ?? this.NAME;
-        this.LOCATION = process.env.LOG_LOCATION ?? this.LOCATION;
-        this.CONSOLE_LEVEL = process.env.LOG_CONSOLE_LEVEL ?? this.CONSOLE_LEVEL;
-        this.FILE_LEVEL = process.env.LOG_FILE_LEVEL ?? this.FILE_LEVEL;
-        this.ROTATE = process.env.LOG_ROTATE_PERIOD ?? this.ROTATE;
-        this.DEBUG_MODE = JSON.parse(process.env.LOG_DEBUG_MODE) ?? this.DEBUG_MODE;
+        this.winston = winston.createLogger({
+            levels: builder._getLevels(),
+            level: 'debug',
+            transports: [ shutup ],
+        })
 
-        return this;
-    }
-
-    // Getters
-    
-    get() {
-        return this.WINSTON_LOG;
-    }
-
-    getColors() {
-        const colors = {};
-        for (const key in this.LEVELS) {
-            if (this.LEVELS.hasOwnProperty(key)) {
-                colors[key] = this.LEVELS[key].color
+        // this allow us to do "logger.<info/debug/etc>('message')" and actually sends it to winston
+        // function Logger.[LEVEL](message)
+        for (const level in LEVELS) {
+            this[level] = (m) => {
+                // update childrens before logging // probably not efficient here... only do it at transport?
+                this.winston[level](m);
             }
         }
-        
-        if (this.DEBUG_MODE) {
-            console.log("Transforming LEVELS array to COLORS for Winston.")
-            console.log(this.LEVELS)
-            console.log("Returned: " + JSON.stringify(colors))
+    }
+
+
+    // ----------------------------------------------------------------------------------------------------
+    // Propagators 
+
+    // Propagate the transport to child logs (every log that is prefixed with "${this.name}." of our log)
+    _propagateTransport(Transport) {
+        this.children = this.builder.loggers.filter(logger => logger.name.startsWith(this.name + "."));
+        for (const child of this.children) {
+            child.addTransport(Transport); // add transport to it
         }
-
-        return colors;
     }
 
-    getLevels() {
-        const levels = {};
-
-        for (const key in this.LEVELS) {
-            if (this.LEVELS.hasOwnProperty(key)) {
-                levels[key] = this.LEVELS[key].level;
-            }
+    // Propagate the level to child logs
+    _propagateLevel(level) {
+        this.children = this.builder.loggers.filter(logger => logger.name.startsWith(this.name + "."));
+        for (const child of this.children) {
+            child.setLevel(level); // set level to it
         }
-        
-        return levels;
-
-    }
-    
-    // Setters
-
-    setName(name) {
-        this.NAME = name;
-        return this;
     }
 
-    setLocation(location) {
-        this.LOCATION = path.resolve(location);
-        return this;
+    // ----------------------------------------------------------------------------------------------------
+    // Methods 
+
+    setLevel(level) {
+        this.winston.level = level;
+        this._propagateLevel(level); // propagate level to child logs
     }
 
-    setConsoleLevel(clvl) {
-        this.CONSOLE_LEVEL = clvl;
-        return this;
-    }
+    addTransport(Transport) {
 
-    setFileLevel(flvl) {
-        this.FILE_LEVEL = flvl;
-        return this;
-    }
-
-    setLevel(lvl) {
-        this.CONSOLE_LEVEL = lvl;
-        this.FILE_LEVEL = lvl;
-        return this;
-    }
-
-    setRotate(rotate) {
-        this.ROTATE = rotate;
-        return this;
-    }
-
-    setJob(job) {
-        this.JOB = job;
-        return this;
+        // @NOTE(adrian): THIS line right here is what make us incompatible with winston formatters
+        // and why we need custom transport "wrappers": we need to tell the formatter the name of the label
+        // i dont know how to do this any other way. deal with it
+        this.winston.add(Transport.gen(this.name)); // update our log
+        this._propagateTransport(Transport); // propagate transport to child logs 
     }
 
 }
+
+class LogBuilder {
+    constructor() {
+        this.levels = {
+            critical: { level: 0, color: "bold red blackBG" },
+            error: { level: 1, color: "red" },
+            warn: { level: 2, color: "yellow" },
+            info: { level: 3, color: "bold green" },
+            debug: { level: 4, color: "blue" },
+            trace: { level: 5, color: "cyan" },
+            unit: { level: 6, color: "bold cyan" }
+        }
+
+        // Active loggers
+        this.loggers = [];
+
+        // List quick transports
+        this.transports = {
+            Console: EasyConsole,
+            FileRotate: EasyFileRotate
+        }
+
+        // Adding this.[LEVEL] consts to the class
+        for (let level in LEVELS) {
+            this[level.toUpperCase()] = LEVELS[level].level;
+        }    
+    }
+
+    // -------------------------------------------------
+
+    _getLevels() {
+        const levels = {};
+        for (const key in LEVELS) {
+            levels[key] = LEVELS[key].level;
+        }
+        return levels;
+    }
+
+    _getColors() {
+        const colors = {};
+        for (const key in LEVELS) {
+            colors[key] = LEVELS[key].color;
+        }
+        return colors;
+
+    }
+
+    // -------------------------------------------------
+
+    getLogger(name) {
+
+        // get logger if it exists
+        let logger = this.loggers.find(logger => logger.name === name);
+        if (logger) {
+            return logger;
+        }
+
+        // logger does not exist, register a new one and return it
+        logger = new Logger(this, name);
+        this.loggers.push(logger);
+        return logger;
+
+    }
+}
+
+export const logging = new LogBuilder()

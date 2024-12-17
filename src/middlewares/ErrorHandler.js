@@ -1,9 +1,7 @@
 import { ZodError } from 'zod';
-import Logger from '../utils/logging.js';
+import { logging } from '../utils/logging.js';
 
-
-
-const logger = new Logger('ErrorHandler', false).useEnvConfig().create();
+const logger = logging.getLogger('api.middlewares.errorhandler');
 
 const isZodError = (err) => { if (err instanceof ZodError) return true; return false; };
 
