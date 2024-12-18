@@ -176,23 +176,19 @@ class BaseController {
     }
 
     delete = async (req, res, next) => {
-        let idToDelete
         try {
-            let payload;
+            let idToDelete;
             let result;
             
             idToDelete = await this.Model.getId(this.filterify(req.params))
             if (idToDelete?.success == false) {
+                this.logger.info(`${req.logprefix} Couldn't find delete target:\n${JSON.stringify(req.params)}`)
                 return res.status(idToDelete.code).json(idToDelete)
             }
 
             this.logger.info(`${req.logprefix} Id to be deleted: ${JSON.stringify(idToDelete)}`)
 
-            payload = {
-                id: parseInt(idToDelete)
-            }
-
-            result = await this.Model.delete(payload)
+            result = await this.Model.delete({id: parseInt(idToDelete)})
             return res.status(result.code).json(result)
         } catch (error) {
             next(error)

@@ -15,7 +15,7 @@
     },
     "scripts": {
         "server": "nodemon --legacy-watch app.js",
-        "test": "mocha __tests__/*"
+        "test": "NODE_ENV=test mocha __tests__/*"
     },
     "devDependencies": {
         "chai": "^5.1.2",
