@@ -33,8 +33,3 @@ class UserSchema {
 }
 
 export default UserSchema
-
-
-
-
-

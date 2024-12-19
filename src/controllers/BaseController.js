@@ -89,7 +89,8 @@ class BaseController {
             // validate data
             this.logger.info(`${req.logprefix} Validating payload...`)
             let schema = await this.getSchema({ merge_with: this.Schema.create() })
-            schema.strict().parse(payload)
+            payload = schema.strict().parse(payload)
+            this.logger.info(`${req.logprefix} Validated payload:\n${JSON.stringify(payload)}`)
             
             // create with validated data
             this.logger.info(`${req.logprefix} Creating...`)
@@ -109,7 +110,7 @@ class BaseController {
                 query: async (query) => {
                     this.logger.info(`${req.logprefix} Validating query\n${JSON.stringify(query)}`)
                     let schema = await this.getSchema({merge_with: this.Schema.read(), as_skeleton: true})
-                    schema.strict().parse(query)
+                    query = schema.strict().parse(query)
     
                     return this.filterify(query);
                 }
@@ -153,7 +154,8 @@ class BaseController {
 
             this.logger.info(`${req.logprefix} Validating sent data:\n${JSON.stringify(payload)}`)
             let schema = await this.getSchema({ as_skeleton: true, block_api_param: ['id']})
-            schema.strict().parse(payload)
+            payload = schema.strict().parse(payload)
+            this.logger.info(`${req.logprefix} Validated sent data:\n${JSON.stringify(payload)}`)
 
             if (!req.params.id) {
                 this.logger.info(`${req.logprefix} Searching the actual id, because no id was provided:\n${JSON.stringify(req.params)}`)

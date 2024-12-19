@@ -221,6 +221,7 @@ class MagnusModel {
     async query(data) {
         // TODO(adrian): make this support multi-id action:destroy
         // for now, no need. // 09/12/24, 16:22
+        logger.info(`Querying Magnus with data:\n${JSON.stringify(data)}`)
         let { module, action } = data
 
         data.nonce = generateNonce()

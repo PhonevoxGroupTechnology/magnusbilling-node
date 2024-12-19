@@ -4,9 +4,9 @@ const router = Router();
 
 router.post('/user', UserController.create)
 
-router.get('/user/rules', UserController.getRules) // this has to be above the /:id and /:username routes, or it will treat as id
+router.get('/user/rules', UserController.getRules) // has to be above param routes (/:id)
 router.get('/user', UserController.query)
-router.get('/user/id/:id', UserController.query) // 
+router.get('/user/id/:id', UserController.query)
 router.get('/user/:username', UserController.query)
 
 router.put('/user/:username', UserController.update)
