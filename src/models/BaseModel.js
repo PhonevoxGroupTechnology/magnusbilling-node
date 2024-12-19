@@ -139,7 +139,7 @@ class BaseModel {
         if (result.success) {
             // Palhaçada esse "??" ai em. Prioriza data, depois rows, caso contrário nodata
             
-            if (result.response.rows.length > 1) {
+            if (result?.response?.rows?.length > 1) {
                 // NÃO FAZ SENTIDO RETORNAR MAIS DE 1 NO ROWS, ENTÃO VOU DEIXAR ACESSANDO O PRIMEIRO ITEM DO ARRAY MESMO
                 // VÁ SE FUDER
                 this.logger.warn(`[CREATE] WARNING: More than 1 row returned. Returning first item.`);

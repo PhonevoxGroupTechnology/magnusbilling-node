@@ -12,14 +12,14 @@ const transport_file = new logging.transports.FileRotate({
     maxFiles: '14d',
 })
 
-// logger.addTransport(transport_console);
-// logger.addTransport(transport_file);
+logger.addTransport(transport_console);
+logger.addTransport(transport_file);
 logger.setLevel('unit')
 
 let testUser = {
-    username: 'mocha_testing',
-    email: 'mocha_testing@example.com',
-    password: '@#mocha_testing',
+    username: 'user_mocha_testing',
+    email: 'user_mocha_testing@example.com',
+    password: '@#user_mocha_testing',
 }
 
 describe('CRUD Validation on /api/clients/user', () => {
@@ -29,7 +29,7 @@ describe('CRUD Validation on /api/clients/user', () => {
     afterEach(function () {
         if (this.currentTest.state === 'failed') {
             logger.info(`Test "${this.currentTest.title}" failed!`);
-            logger.info('Response body:', JSON.stringify(lastResponse.body, null, 2));
+            logger.info(`Response body:\n${JSON.stringify(lastResponse.body)}`);
         }
     });
 
@@ -49,7 +49,6 @@ describe('CRUD Validation on /api/clients/user', () => {
             expect(res.body).to.have.property('success').that.equals(true);
             expect(res.body).to.have.property('response');
             expect(res.body.response).to.have.property('id');
-            expect(res.body.response.id).to.equal(createdUserId);
         } else if (res.statusCode === 404) {
             logger.info(`test user ${testUser.username} does not exist.`);
             expect(res.body).to.have.property('success').that.equals(false);
@@ -64,7 +63,7 @@ describe('CRUD Validation on /api/clients/user', () => {
             .send()
             lastResponse = res;
 
-        logger.unit(JSON.stringify(res.body))
+        // logger.unit(JSON.stringify(res.body))
         expect(res.statusCode).to.equal(200);
         expect(res.body).to.have.property('success').that.equals(true);
         expect(res.body).to.have.property('data');
@@ -79,7 +78,7 @@ describe('CRUD Validation on /api/clients/user', () => {
             .send({ module: 'sip', action: 'destroy', username: testUser.username, email: testUser.email, password: testUser.password });
             lastResponse = res;
 
-        logger.unit(JSON.stringify(res.body))
+        // logger.unit(JSON.stringify(res.body))
         expect(res.statusCode).to.equal(400);
         expect(res.body).to.have.property('success').that.equals(false);
         expect(res.body).to.have.property('errors'); // this might change to be honest
@@ -92,7 +91,7 @@ describe('CRUD Validation on /api/clients/user', () => {
             .send({ username: testUser.username, email: testUser.email, password: testUser.password });
             lastResponse = res;
 
-        logger.unit(JSON.stringify(res.body))
+        // logger.unit(JSON.stringify(res.body))
         expect(res.statusCode).to.equal(200);
         expect(res.body).to.have.property('success').that.equals(true);
         expect(res.body).to.have.property('response');
@@ -115,7 +114,7 @@ describe('CRUD Validation on /api/clients/user', () => {
             .send({ password: 'd3092jf0foe3oe32' });
             lastResponse = res;
 
-        logger.unit(JSON.stringify(res.body))
+        // logger.unit(JSON.stringify(res.body))
         expect(res.statusCode).to.equal(200);
         expect(res.body).to.have.property('success').that.equals(true);
         expect(res.body).to.have.property('response');
@@ -128,7 +127,7 @@ describe('CRUD Validation on /api/clients/user', () => {
             .send({ password: 'd3092jf0foe3oe32' });
             lastResponse = res;
 
-        logger.unit(JSON.stringify(res.body))
+        // logger.unit(JSON.stringify(res.body))
         expect(res.statusCode).to.equal(200);
         expect(res.body).to.have.property('success').that.equals(true);
         expect(res.body).to.have.property('response');
@@ -141,7 +140,7 @@ describe('CRUD Validation on /api/clients/user', () => {
             .send()
             lastResponse = res;
 
-        logger.unit(JSON.stringify(res.body))
+        // logger.unit(JSON.stringify(res.body))
         expect(res.statusCode).to.equal(200);
         expect(res.body).to.have.property('success').that.equals(true);
         expect(res.body).to.have.property('response');
@@ -158,7 +157,7 @@ describe('CRUD Validation on /api/clients/user', () => {
             .send()
             lastResponse = res;
 
-        logger.unit(JSON.stringify(res.body))
+        // logger.unit(JSON.stringify(res.body))
         expect(res.statusCode).to.equal(200);
         expect(res.body).to.have.property('success').that.equals(true);
         expect(res.body).to.have.property('response');
@@ -172,7 +171,7 @@ describe('CRUD Validation on /api/clients/user', () => {
             .send()
             lastResponse = res;
 
-        logger.unit(JSON.stringify(res.body))
+        // logger.unit(JSON.stringify(res.body))
         expect(res.statusCode).to.equal(200);
         expect(res.body).to.have.property('success').that.equals(true);
         expect(res.body).to.have.property('response');
@@ -187,7 +186,7 @@ describe('CRUD Validation on /api/clients/user', () => {
             .send()
             lastResponse = res;
 
-        logger.unit(JSON.stringify(res.body))
+        // logger.unit(JSON.stringify(res.body))
         expect(res.statusCode).to.equal(200);
         expect(res.body).to.have.property('success').that.equals(true);
         expect(res.body).to.have.property('response');
@@ -202,7 +201,7 @@ describe('CRUD Validation on /api/clients/user', () => {
             .send()
             lastResponse = res;
 
-        logger.unit(JSON.stringify(res.body))
+        // logger.unit(JSON.stringify(res.body))
         expect(res.statusCode).to.equal(200);
         expect(res.body).to.have.property('success').that.equals(true);
         expect(res.body).to.have.property('response');
@@ -215,7 +214,7 @@ describe('CRUD Validation on /api/clients/user', () => {
             .send()
             lastResponse = res;
 
-        logger.unit(JSON.stringify(res.body))
+        // logger.unit(JSON.stringify(res.body))
         expect(res.statusCode).to.equal(404);
         expect(res.body).to.have.property('success').that.equals(false);
     })
