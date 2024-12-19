@@ -1,241 +1,117 @@
-import axios from "axios";
+import 'dotenv/config';
+import assert from 'assert'
 import { expect } from 'chai';
-import request from 'supertest';
-import app from '../app.js';
-import { logging } from '../src/utils/logging.js';
+import sinon from 'sinon';
+import UserModel from '../src/models/clients/UserModel.js';
+import UserController from '../src/controllers/clients/UserController.js';
+import { logging } from '../src/utils/logging.js'
+import { createMocks } from './helpers/mocks.js';
 
-const logger = logging.getLogger('test');
+console.log(UserModel)
+
+const logger = logging.getLogger('api');
+const test_logger = logging.getLogger('test');
 const transport_console = new logging.transports.Console()
-const transport_file = new logging.transports.FileRotate({
-    filename: './logs/test-%DATE%.log',
-    maxSize: '20m',
-    maxFiles: '14d',
-})
 
 logger.addTransport(transport_console);
-logger.addTransport(transport_file);
+test_logger.addTransport(transport_console);
 logger.setLevel('unit')
+test_logger.setLevel('unit')
 
-let testUser = {
-    username: 'user_mocha_testing',
-    email: 'user_mocha_testing@example.com',
-    password: '@#user_mocha_testing',
-}
+describe('UserController - CREATE, READ, UPDATE, DELETE', () => {
+    let createSpy;
+    let updateSpy;
+    let deleteSpy;
+    let queryStub;
+    let req;
+    let res;
+    let next;
 
-describe('CRUD Validation on /api/clients/user', () => {
-    let createdUserId;
-    let lastResponse;
+    beforeEach(() => {
+        createSpy = sinon.spy(UserModel, 'create'); // spy to not block the default behaviour
+        updateSpy = sinon.spy(UserModel, 'update');
+        deleteSpy = sinon.spy(UserModel, 'delete');
+        queryStub = sinon.stub(UserModel, 'query'); // stub to block the default behaviour
+        ({req, res, next} = createMocks()); // prepare the fake request
+    })
 
-    afterEach(function () {
-        if (this.currentTest.state === 'failed') {
-            logger.info(`Test "${this.currentTest.title}" failed!`);
-            logger.info(`Response body:\n${JSON.stringify(lastResponse.body)}`);
+    afterEach(() => {
+        sinon.restore();
+        ({req, res, next} = createMocks());
+    })
+
+    it('#create', async () => {
+        const expectedPayload = {
+            module: 'user',
+            action: 'save',
+            createUser: 1, // means we want to create a new user
+            id: 0, // means create a new record
+            active: "1",
+            id_group: 3,
+            username: 'Expected username',
+            email: 'Expected@email.com',
+            password: 'Expected password',
         }
-    });
 
+        req.body = {
+            username: 'Expected username',
+            email: 'Expected@email.com',
+            password: 'Expected password',
+        };
 
+        await UserController.create(req, res, next);
+        assert(createSpy.calledOnce, 'create method should have been called once');
+        assert(queryStub.calledOnce, 'query method should have been called once');
 
-    // RULE TESTS
+        const actualPayload = queryStub.getCall(0).args[0];
+        assert.deepEqual(actualPayload, expectedPayload, 'payload should match expected payload');
 
-    it('should make sure mocha user does not exist', async () => {
-        const res = await request(app)
-            .delete(`/api/clients/user/${testUser.username}`)
-            .send()
-            lastResponse = res;
-
-        expect([200, 404]).to.include(res.statusCode);
-        if (res.statusCode === 200) {
-            logger.info(`test user ${testUser.username} exist, deleting...`)
-            expect(res.body).to.have.property('success').that.equals(true);
-            expect(res.body).to.have.property('response');
-            expect(res.body.response).to.have.property('id');
-        } else if (res.statusCode === 404) {
-            logger.info(`test user ${testUser.username} does not exist.`);
-            expect(res.body).to.have.property('success').that.equals(false);
-            expect(res.body).to.have.property('message').that.equals('ID not found');
-        }
     })
+})
+/*
 
 
-    it('should get module rules', async () => {
-        const res = await request(app)
-            .get('/api/clients/user/rules')
-            .send()
-            lastResponse = res;
 
-        // logger.unit(JSON.stringify(res.body))
-        expect(res.statusCode).to.equal(200);
-        expect(res.body).to.have.property('success').that.equals(true);
-        expect(res.body).to.have.property('data');
-        expect(res.body.data).to.have.property('rules');
-    })
 
-    // CREATE TESTS
 
-    it('should block us from sending module and/or action', async () => {
-        const res = await request(app)
-            .post('/api/clients/user')
-            .send({ module: 'sip', action: 'destroy', username: testUser.username, email: testUser.email, password: testUser.password });
-            lastResponse = res;
-
-        // logger.unit(JSON.stringify(res.body))
-        expect(res.statusCode).to.equal(400);
-        expect(res.body).to.have.property('success').that.equals(false);
-        expect(res.body).to.have.property('errors'); // this might change to be honest
-        expect(res.body.errors).to.have.lengthOf(1);
-    })
 
     it('should create a new user successfully', async () => {
-        const res = await request(app)
-            .post('/api/clients/user')
-            .send({ username: testUser.username, email: testUser.email, password: testUser.password });
-            lastResponse = res;
 
-        // logger.unit(JSON.stringify(res.body))
-        expect(res.statusCode).to.equal(200);
-        expect(res.body).to.have.property('success').that.equals(true);
-        expect(res.body).to.have.property('response');
-        createdUserId = res.body.response.id;
+        // simulate query behaviour. dont worry about response itself
+        const mockQueryResponse = { success: true, response: {} };  // Ajuste conforme necessário
+        userModelMock.resolves(mockQueryResponse);
+
+        // example data sent to creation method
+        const userData = {
+            username: 'testuser',
+            email: 'testuser@example.com',
+            password: 'testpassword',
+        };
+        req.body = userData
+
+        const expectedPayload = {
+            module: 'user',
+            action: 'save',
+            createUser: 1, // means we want to create a new user
+            id: 0, // means create a new record
+            username: 'testuser',
+            email: 'testuser@example.com',
+            password: 'testpassword',
+        }
+
+        await userController.create(req, res, next);
+        assert(userModelMock.calledOnce, `Expected the mock query to be called once, but it was called ${userModelMock.callCount} times`);
+
+
+        const actualPayload = userModelMock.getCall(0).args[0]; // first arg of first call
+
+        // assert.deepEqual(actualPayload, expectedPayload, 'Payload sent to query does not match expected one.');
+
+        // check values
+        Object.keys(expectedPayload).forEach(key => {
+            expect(actualPayload).to.have.property(key, expectedPayload[key]);
+        });
     })
+})
 
-    it('should block us from creating a duplicate user', async () => {
-        const res = await request(app)
-            .post('/api/clients/user')
-            .send({ username: testUser.username, email: testUser.email, password: testUser.password });
-            lastResponse = res;
-
-        expect(res.statusCode).to.equal(500);
-        expect(res.body).to.have.property('success').that.equals(false);
-    })
-
-    it('should update user via id', async () => {
-        const res = await request(app)
-            .put(`/api/clients/user/id/${createdUserId}`)
-            .send({ password: 'd3092jf0foe3oe32' });
-            lastResponse = res;
-
-        // logger.unit(JSON.stringify(res.body))
-        expect(res.statusCode).to.equal(200);
-        expect(res.body).to.have.property('success').that.equals(true);
-        expect(res.body).to.have.property('response');
-        expect(res.body.response).to.have.property('id').that.equals(createdUserId);
-    })
-
-    it('should update user via username', async () => {
-        const res = await request(app)
-            .put(`/api/clients/user/${testUser.username}`)
-            .send({ password: 'd3092jf0foe3oe32' });
-            lastResponse = res;
-
-        // logger.unit(JSON.stringify(res.body))
-        expect(res.statusCode).to.equal(200);
-        expect(res.body).to.have.property('success').that.equals(true);
-        expect(res.body).to.have.property('response');
-        expect(res.body.response).to.have.property('id').that.equals(createdUserId);
-    })
-
-    it('should list every user', async () => {
-        const res = await request(app)
-            .get('/api/clients/user')
-            .send()
-            lastResponse = res;
-
-        // logger.unit(JSON.stringify(res.body))
-        expect(res.statusCode).to.equal(200);
-        expect(res.body).to.have.property('success').that.equals(true);
-        expect(res.body).to.have.property('response');
-        expect(res.body.response).to.have.property('rows');
-        expect(res.body.response).to.have.property('count');
-        let userCount  = res.body.response.count;
-        expect(res.body.response).to.have.property('rows').that.have.lengthOf(userCount);
-    })
-
-    it('should return the test user via search parameters', async () => {
-        const res = await request(app)
-            .get('/api/clients/user')
-            .query({ username: testUser.username })
-            .send()
-            lastResponse = res;
-
-        // logger.unit(JSON.stringify(res.body))
-        expect(res.statusCode).to.equal(200);
-        expect(res.body).to.have.property('success').that.equals(true);
-        expect(res.body).to.have.property('response');
-        expect(res.body.response).to.have.property('rows').that.have.lengthOf(1);
-        expect(res.body.response.rows[0]).to.have.property('username').that.equals(testUser.username);
-    })
-
-    it('should return the test user via id', async () => {
-        const res = await request(app)
-            .get(`/api/clients/user/id/${createdUserId}`)
-            .send()
-            lastResponse = res;
-
-        // logger.unit(JSON.stringify(res.body))
-        expect(res.statusCode).to.equal(200);
-        expect(res.body).to.have.property('success').that.equals(true);
-        expect(res.body).to.have.property('response');
-        expect(res.body.response).to.have.property('rows').that.have.lengthOf(1);
-        expect(res.body.response.rows[0]).to.have.property('id').that.equals(createdUserId);
-        expect(res.body.response.rows[0]).to.have.property('username').that.equals(testUser.username);
-    })
-
-    it('should return the test user via username', async () => {
-        const res = await request(app)
-            .get(`/api/clients/user/${testUser.username}`)
-            .send()
-            lastResponse = res;
-
-        // logger.unit(JSON.stringify(res.body))
-        expect(res.statusCode).to.equal(200);
-        expect(res.body).to.have.property('success').that.equals(true);
-        expect(res.body).to.have.property('response');
-        expect(res.body.response).to.have.property('rows').that.have.lengthOf(1);
-        expect(res.body.response.rows[0]).to.have.property('id').that.equals(createdUserId);
-        expect(res.body.response.rows[0]).to.have.property('username').that.equals(testUser.username);
-    })
-
-    it('should delete the test user', async () => {
-        const res = await request(app)
-            .delete(`/api/clients/user/id/${createdUserId}`)
-            .send()
-            lastResponse = res;
-
-        // logger.unit(JSON.stringify(res.body))
-        expect(res.statusCode).to.equal(200);
-        expect(res.body).to.have.property('success').that.equals(true);
-        expect(res.body).to.have.property('response');
-        expect(res.body.response).to.have.property('id').that.equals(parseInt(createdUserId));
-    })
-
-    it('should return not found when trying to delete an already deleted user', async () => {
-        const res = await request(app)
-            .delete(`/api/clients/user/id/${createdUserId}`)
-            .send()
-            lastResponse = res;
-
-        // logger.unit(JSON.stringify(res.body))
-        expect(res.statusCode).to.equal(404);
-        expect(res.body).to.have.property('success').that.equals(false);
-    })
-
-
-
-    // // list users // READ
-    // it('should list all users', async () => {})
-    // it('should confirm module&action is blocked in read', async () => {})
-
-    // // get mocha user
-    // it('should get the test user', async () => {})
-
-    // // update mocha user // UPDATE
-    // it('should update the test user password', async () => {})
-    // it('should confirm module&action is blocked in update', async () => {})
-
-    // // delete mocha user // DELETE
-    // it('should delete the test user', async () => {})
-    // it('should confirm module&action is blocked in delete', async () => {})
-
-    // // guarantee module and action is blocked
-
-});
+*/

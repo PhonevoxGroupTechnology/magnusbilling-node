@@ -1,5 +1,10 @@
 {
     "type": "module",
+    "scripts": {
+        "server": "nodemon --legacy-watch app.js",
+        "test": "NODE_ENV=test mocha __tests__/*",
+        "test-with-coverage": "NODE_ENV=test nyc mocha __tests__/*"
+    },
     "dependencies": {
         "axios": "^1.7.9",
         "bcrypt": "^5.1.1",
@@ -7,18 +12,16 @@
         "dotenv": "^16.4.7",
         "express": "^4.21.2",
         "express-rate-limit": "^7.4.1",
+        "sinon": "^19.0.2",
         "supertest": "^7.0.0",
         "winston": "^3.17.0",
         "winston-daily-rotate-file": "^5.0.0",
         "zod": "^3.24.0",
         "zod-validation-error": "^3.4.0"
     },
-    "scripts": {
-        "server": "nodemon --legacy-watch app.js",
-        "test": "NODE_ENV=test mocha __tests__/*"
-    },
     "devDependencies": {
         "chai": "^5.1.2",
-        "mocha": "^11.0.1"
+        "mocha": "^11.0.1",
+        "nyc": "^17.1.0"
     }
 }

@@ -130,6 +130,8 @@ class BaseModel {
             action: 'save',
         };
 
+        console.log('INSIDE BASEMODEL CREATE, GOING TO QUERY')
+
         const result = await this.query(payload); // isso vai começar a retornar d maneira diferente. arrume!!!!
 
         this.logger.warn(`[CREATE] Payload: ${JSON.stringify(payload)}`);
@@ -145,7 +147,7 @@ class BaseModel {
                 this.logger.warn(`[CREATE] WARNING: More than 1 row returned. Returning first item.`);
             }
 
-            return this.success(200, undefined, { response: result.response.data ?? result.response.rows[0] ?? 'nodata' });
+            return this.success(200, undefined, { response: result?.response?.data ?? result?.response?.rows[0] ?? 'nodata' });
         }
         return this.error(500, result?.message, {});
     }

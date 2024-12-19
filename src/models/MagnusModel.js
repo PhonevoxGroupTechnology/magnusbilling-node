@@ -196,18 +196,20 @@ class MagnusModel {
      * @returns                  - Parsed rules. May vary depending on booleans used
      */
     async getRules(module, schema=false, skeleton=false, block_param=[]) {
-        let ret
+        let ret;
 
         if (skeleton && !schema ) {
             logger.warn(`${module}: Skeleton was requested, but we are not building a schema. This will be ignored.`)
         }
 
         // raw rule from api
+        logger.warn(`Getting rules for module ${module}`)
         let rules = await this.query({
             module: module,
             action: '',
             getFields: 1
         })
+        logger.warn(`Got rules for module ${module}:\n${JSON.stringify(rules)}`)
 
         if (rules) {
             ret = parseApiRules(rules, block_param) // basic parse
