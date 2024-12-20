@@ -11,6 +11,7 @@ class UserModel extends BaseModel {
     async create(payload) {
         return await super.create({ ...payload, id: 0, createUser: 1 });
     }
+
 }
 
 export default new UserModel()

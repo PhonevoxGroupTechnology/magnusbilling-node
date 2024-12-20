@@ -14,7 +14,9 @@ class UserSchema {
 
   // what is needed to update an user (besides api requirements)
   static update() {
-    return null;
+    return z.object({
+      id: z.number(),
+    });
   }
 
   // what is needed to read an user (along with api structure)

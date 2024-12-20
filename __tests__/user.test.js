@@ -8,15 +8,16 @@ import { logging } from '../src/utils/logging.js'
 import { createMocks } from './helpers/mocks.js';
 
 chai.use(sinonChai);
-const { expect } = chai;
+const { assert, expect } = chai;
 
-const logger = logging.getLogger("api");
+const api_logger = logging.getLogger("api");
 const test_logger = logging.getLogger("test");
 const transport_console = new logging.transports.Console()
 
-logger.addTransport(transport_console);
+api_logger.addTransport(transport_console);
+api_logger.setLevel("trace")
+
 test_logger.addTransport(transport_console);
-logger.setLevel("unit")
 test_logger.setLevel("unit")
 
 describe("UserController payload formatting to Model.query", () => {
@@ -34,10 +35,6 @@ describe("UserController payload formatting to Model.query", () => {
             query: undefined,
         }
     }
-    let createSpy;
-    let updateSpy;
-    let deleteSpy;
-    let UserModelQuery;
     let req;
     let res;
     let next;
@@ -75,10 +72,13 @@ describe("UserController payload formatting to Model.query", () => {
             "password": "Expected password",
         };
 
+        // test
         await UserController.create(req, res, next);
 
+        // assertions
         expect(UserModelMock.spy.create).to.have.been.calledOnce
-        expect(UserModelMock.stub.query).to.have.been.calledOnce.calledWithMatch(expectedPayload)
+        expect(UserModelMock.stub.query).to.have.been.calledOnce
+        assert.deepEqual(UserModelMock.stub.query.getCall(0).args[0], expectedPayload, "Payload is different from what we've expected to receive.")
     })
 
     it("should format to search an user via req.query", async () => {
@@ -94,8 +94,12 @@ describe("UserController payload formatting to Model.query", () => {
             "password": "Expected password",
         }
 
+        // test
         await UserController.query(req, res, next);
-        expect(UserModelMock.stub.query).to.have.been.calledOnce.calledWithMatch(expectedPayload)
+        
+        // assertions
+        expect(UserModelMock.stub.query).to.have.been.calledOnce
+        chai.assert.deepEqual(UserModelMock.stub.query.getCall(0).args[0], expectedPayload, "Payload is different from what we've expected to receive.")
     })
 
     it("should format to find an user via id in req.params", async () => {
@@ -109,8 +113,12 @@ describe("UserController payload formatting to Model.query", () => {
             "id": "Expected id",
         }
 
+        // test
         await UserController.query(req, res, next);
-        expect(UserModelMock.stub.query).to.have.been.calledOnce.calledWithMatch(expectedPayload)
+        
+        // assertions
+        expect(UserModelMock.stub.query).to.have.been.calledOnce
+        assert.deepEqual(UserModelMock.stub.query.getCall(0).args[0], expectedPayload, "Payload is different from what we've expected to receive.")
     })
 
     it("should format to find an user via username in req.params", async () => {
@@ -123,56 +131,42 @@ describe("UserController payload formatting to Model.query", () => {
         req.params = {
             "username": "Expected username",
         }
-
+    
+        // test
         await UserController.query(req, res, next);
-        expect(UserModelMock.stub.query).to.have.been.calledOnce.calledWithMatch(expectedPayload)
+        
+        // assertions
+        expect(UserModelMock.stub.query).to.have.been.calledOnce
+        assert.deepEqual(UserModelMock.stub.query.getCall(0).args[0], expectedPayload, "Payload is different from what we've expected to receive.")
     })
 
-})
-/*
-
-
-
-
-
-
-    it('should create a new user successfully', async () => {
-
-        // simulate query behaviour. dont worry about response itself
-        const mockQueryResponse = { success: true, response: {} };  // Ajuste conforme necessário
-        userModelMock.resolves(mockQueryResponse);
-
-        // example data sent to creation method
-        const userData = {
-            username: 'testuser',
-            email: 'testuser@example.com',
-            password: 'testpassword',
-        };
-        req.body = userData
-
+    it("should format to update an user via req.params username", async () => {
         const expectedPayload = {
-            module: 'user',
-            action: 'save',
-            createUser: 1, // means we want to create a new user
-            id: 0, // means create a new record
-            username: 'testuser',
-            email: 'testuser@example.com',
-            password: 'testpassword',
+            "module": "user",
+            "action": "save",
+            "id": 52416532054094,
+            "password": "Expected password",
+            "username": "Expected username",
+            "email": "Expected@email.com",
         }
 
-        await userController.create(req, res, next);
-        assert(userModelMock.calledOnce, `Expected the mock query to be called once, but it was called ${userModelMock.callCount} times`);
+        req.body = {
+            "username": "Expected username",
+            "email": "Expected@email.com",
+            "password": "Expected password",
+        }
 
+        req.params = {
+            "id": 52416532054094
+        }
 
-        const actualPayload = userModelMock.getCall(0).args[0]; // first arg of first call
+        // test
+        await UserController.update(req, res, next);
 
-        // assert.deepEqual(actualPayload, expectedPayload, 'Payload sent to query does not match expected one.');
+        // assertions
+        expect(UserModelMock.stub.query).to.have.been.calledOnce
+        assert.deepEqual(UserModelMock.stub.query.getCall(0).args[0], expectedPayload, "Payload is different from what we've expected to receive.")
 
-        // check values
-        Object.keys(expectedPayload).forEach(key => {
-            expect(actualPayload).to.have.property(key, expectedPayload[key]);
-        });
     })
-})
 
-*/
+})

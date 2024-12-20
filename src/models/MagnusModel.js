@@ -17,7 +17,7 @@ const generateNonce = () => {
     let nonce = new Date().getTime().toString();
     nonce = nonce.slice(-10) + nonce.substr(2,6);
 
-    logger.trace(`- Nonce: ${nonce}`)
+    logger.unit(`- Nonce: ${nonce}`)
     return nonce
 }
 
@@ -35,7 +35,7 @@ const signData = (data, secret) => {
     let hex_ca_hmac = content_aware_hmac.digest('hex'); // hexed content-aware hmac512 (final sign)
 
     let sign = hex_ca_hmac
-    logger.trace(`- Sign: ${sign}`)
+    logger.unit(`- Sign: ${sign}`)
     return sign
 }
 
@@ -203,13 +203,13 @@ class MagnusModel {
         }
 
         // raw rule from api
-        logger.trace(`Getting rules for module ${module}`)
+        logger.unit(`Getting rules for module ${module}`)
         let rules = await this.query({
             module: module,
             action: '',
             getFields: 1
         })
-        logger.trace(`Got rules for module ${module}:\n${JSON.stringify(rules)}`)
+        logger.unit(`Got rules for module ${module}:\n${JSON.stringify(rules)}`)
 
         if (rules) {
             ret = parseApiRules(rules, block_param) // basic parse
@@ -223,7 +223,8 @@ class MagnusModel {
     async query(data) {
         // TODO(adrian): make this support multi-id action:destroy
         // for now, no need. // 09/12/24, 16:22
-        logger.info(`Querying Magnus with data:\n${JSON.stringify(data)}`)
+        logger.trace(`MBQuery - Sending query to MagnusBilling...`)
+        logger.debug(`MBQuery - Data: ${JSON.stringify(data)}`)
         let { module, action } = data
 
         data.nonce = generateNonce()
@@ -241,9 +242,9 @@ class MagnusModel {
         const agent = new protocol.Agent({
             rejectUnauthorized: false,
         })
-        logger.debug(`Sending request to ${request_url}\n${JSON.stringify(post_data)}`)
-        logger.trace(`- Headers: ${JSON.stringify(headers)}`)
-        logger.trace(`- Body: ${post_data}`)
+        logger.unit(`Sending request to ${request_url}\nRaw post data:\n${JSON.stringify(post_data)}`)
+        logger.unit(`- Headers: ${JSON.stringify(headers)}`)
+        logger.unit(`- Body: ${post_data}`)
 
         let response
         try {
@@ -253,11 +254,12 @@ class MagnusModel {
                 httpsAgent: protocol === https ? agent : undefined,
             })
 
-            logger.debug(`Received response from ${request_url}\n${JSON.stringify(response.data)}`)
-            logger.trace(`- Response: ${JSON.stringify(response.data)}`)
+            logger.trace(`MBQuery - Response received.`)
+            logger.unit(`Received response from ${request_url}\n${JSON.stringify(response.data)}`)
+            logger.unit(`- Response: ${JSON.stringify(response.data)}`)
             return response.data;
         } catch (error) {
-            logger.error(`Failed to send request to ${request_url}: ${error}`)
+            logger.critical(`Failed to send request to ${request_url}: ${error}`)
             return error
         }
     }
