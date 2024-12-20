@@ -116,14 +116,15 @@ class BaseController {
                 }
             }
 
-            const isQuery = Object.keys(req.query).length > 0
+            // should be an object, and should have length > 0
+            const hasQuery = Object.keys(req.query).length > 0
             const hasParam = Object.keys(req.params).length > 0
             let search_data;
             let payload;
             let result;
 
 
-            if (isQuery) {
+            if (hasQuery) {
                 search_data = req.query
             } else if (hasParam) {
                 search_data = req.params

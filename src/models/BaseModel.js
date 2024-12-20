@@ -138,15 +138,15 @@ class BaseModel {
         this.logger.warn(`[CREATE] Result: ${JSON.stringify(result)}`);
 
         // formatting create result
-        if (result.success) {
-            // Palhaçada esse "??" ai em. Prioriza data, depois rows, caso contrário nodata
+        if (result?.success) {
             
             if (result?.response?.rows?.length > 1) {
                 // NÃO FAZ SENTIDO RETORNAR MAIS DE 1 NO ROWS, ENTÃO VOU DEIXAR ACESSANDO O PRIMEIRO ITEM DO ARRAY MESMO
                 // VÁ SE FUDER
                 this.logger.warn(`[CREATE] WARNING: More than 1 row returned. Returning first item.`);
             }
-
+            
+            // Palhaçada esse "??" ai em. Prioriza data, depois rows, caso contrário nodata
             return this.success(200, undefined, { response: result?.response?.data ?? result?.response?.rows[0] ?? 'nodata' });
         }
         return this.error(500, result?.message, {});

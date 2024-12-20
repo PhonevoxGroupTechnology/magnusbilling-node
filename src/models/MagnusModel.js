@@ -203,13 +203,13 @@ class MagnusModel {
         }
 
         // raw rule from api
-        logger.warn(`Getting rules for module ${module}`)
+        logger.trace(`Getting rules for module ${module}`)
         let rules = await this.query({
             module: module,
             action: '',
             getFields: 1
         })
-        logger.warn(`Got rules for module ${module}:\n${JSON.stringify(rules)}`)
+        logger.trace(`Got rules for module ${module}:\n${JSON.stringify(rules)}`)
 
         if (rules) {
             ret = parseApiRules(rules, block_param) // basic parse
