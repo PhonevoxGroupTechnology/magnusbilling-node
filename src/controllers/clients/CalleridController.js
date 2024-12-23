@@ -8,7 +8,7 @@ class CalleridController extends BaseController {
     }
 
     create = async (req, res, next) => {
-        return super.create(req, res, next, true);
+        return super.create(req, res, next, { pre_search: true, pre_search_fields: ['id_user', 'cid'] });
     };
     
 }

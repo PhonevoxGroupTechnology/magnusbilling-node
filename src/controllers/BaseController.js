@@ -17,7 +17,7 @@ class BaseController {
     _bindMethods() {
         const prototype = Object.getPrototypeOf(this);
         const basePrototype = BaseController.prototype; // Garante o protótipo correto
-    
+
         Object.getOwnPropertyNames(basePrototype).forEach((methodName) => {
             // console.log(`BaseController Method: ${methodName}`);
             if (
@@ -29,20 +29,20 @@ class BaseController {
             }
         });
     }
-    
-    
+
+
 
     // functions here NEEDS to be in arrow-function form
     // otherwise, they will lose the context of the class
     // func = () => {}
     // afunc = async () => {}
 
-    filterify (params) {
-        const _FUNC = FUNC_SUFFIX+'filterify'+FUNC_POSTFIX
+    filterify(params) {
+        const _FUNC = FUNC_SUFFIX + 'filterify' + FUNC_POSTFIX
         let filter = []
         for (const [key, value] of Object.entries(params)) {
             filter.push({
-                type: typeof(value),
+                type: typeof (value),
                 field: key,
                 value: value,
                 comparison: 'eq'
@@ -52,46 +52,46 @@ class BaseController {
     }
 
     // return the zod schema of a given controller. if prioritize_api is true, prioritize the api schema over the controller schema on merge. if as_skeleton is true, return the skeleton of the schema (everything as z.any().optional()) so we can match the fields. if block_api_param has anything inside the list, block the given parameters when doing api rule parsing
-    async getSchema (options = { prioritize_api: false, merge_with: undefined, as_skeleton: false, block_api_param: [] }) {
-        const _FUNC = FUNC_SUFFIX+'getSchema'+FUNC_POSTFIX
-        this.logger.trace(_FUNC+`Building schema. Options: ${Object.keys(options).join(', ')}`)
-        const { prioritize_api=false, merge_with=undefined, as_skeleton=false, block_api_param=[] } = options;
+    async getSchema(options = { prioritize_api: false, merge_with: undefined, as_skeleton: false, block_api_param: [] }) {
+        const _FUNC = FUNC_SUFFIX + 'getSchema' + FUNC_POSTFIX
+        this.logger.trace(_FUNC + `Building schema. Options: ${Object.keys(options).join(', ')}`)
+        const { prioritize_api = false, merge_with = undefined, as_skeleton = false, block_api_param = [] } = options;
 
         let RET_SCHEMA // schema to return
 
         // get api schema
         // @TODO(adrian): cache this shit, I dont want to request it all the time
-        this.logger.trace(_FUNC+`Requesting API schema from Model...`)
+        this.logger.trace(_FUNC + `Requesting API schema from Model...`)
         let API_SCHEMA = await this.Model.getRules({
-            as_schema: true, 
+            as_schema: true,
             as_skeleton: as_skeleton,
-            block_param: block_api_param 
+            block_param: block_api_param
         })
-        
+
         // if we merge, how we merge
         if (merge_with) {
-            this.logger.trace(_FUNC+`Merging schema...`)
+            this.logger.trace(_FUNC + `Merging schema...`)
             if (prioritize_api) {
-                this.logger.debug(_FUNC+`Prioritizing API rules`)
+                this.logger.debug(_FUNC + `Prioritizing API rules`)
                 RET_SCHEMA = merge_with.merge(API_SCHEMA)
             } else {
-                this.logger.debug(_FUNC+`Prioritizing Schema rules`)
+                this.logger.debug(_FUNC + `Prioritizing Schema rules`)
                 RET_SCHEMA = API_SCHEMA.merge(merge_with)
             }
         } else {
-            this.logger.trace(_FUNC+`No merge.`)
+            this.logger.trace(_FUNC + `No merge.`)
             RET_SCHEMA = API_SCHEMA
         }
 
-        this.logger.trace(_FUNC+`Returning schema`)
+        this.logger.trace(_FUNC + `Returning schema`)
 
         return RET_SCHEMA
     }
 
-    async getRules (req, res, next) {
-        const _FUNC = FUNC_SUFFIX+'getRules'+FUNC_POSTFIX
+    async getRules(req, res, next) {
+        const _FUNC = FUNC_SUFFIX + 'getRules' + FUNC_POSTFIX
         try {
-            let rules =  await this.Model.getRules()
+            let rules = await this.Model.getRules()
 
             if (rules) {
                 return res.status(200).json({
@@ -114,9 +114,9 @@ class BaseController {
     // ----------------------------------------------------------------------------------------------------
     // CRUD functions
 
-    async create (req, res, next, preSearch=false) {
-        const _FUNC = FUNC_SUFFIX+'create'+FUNC_POSTFIX
-        this.logger.info(_FUNC+`${req.logprefix}\nBody: ${JSON.stringify(req.body)}\nQuery: ${JSON.stringify(req.query)}\nParams: ${JSON.stringify(req.params)}`)
+    async create(req, res, next, options = { pre_search: false, pre_search_fields: undefined }) {
+        const _FUNC = FUNC_SUFFIX + 'create' + FUNC_POSTFIX
+        this.logger.info(_FUNC + `${req.logprefix}\nBody: ${JSON.stringify(req.body)}\nQuery: ${JSON.stringify(req.query)}\nParams: ${JSON.stringify(req.params)}`)
         try {
             let payload = req.body
 
@@ -127,17 +127,35 @@ class BaseController {
             payload = schema.strict().parse(payload)
 
             // try to find someone in model that already uses the same payload
-            if (preSearch) {
+            if (options.pre_search) {
                 this.logger.info(`${req.logprefix} Pre-searching for existing data...`)
-                const res = await this.Model.getId(this.filterify(payload))
-                // if success == false then everything went right
-                if (!res.success) {
-                    this.logger.warn('No pre-existing data found.')
-                } else {
-                    this.logger.warn('Pre-existing data found! This might not work.')
+
+                // extract only options.pre_search_fields from payload and save as ps_payload
+                // because these fields can be different based on module
+                let ps_payload = {}
+                if (options.pre_search_fields) {
+                    for (const field of options.pre_search_fields) {
+                        ps_payload[field] = payload[field]
+                    }
+                } else { 
+                    ps_payload = payload 
                 }
+
+                const psResult = await this.Model.getId(this.filterify(ps_payload))
+                this.logger.debug(`${req.logprefix} Pre-search result:\n${JSON.stringify(psResult)}`)
+
+                // if res is an objcet
+                if (typeof psResult != 'object') {
+                    this.logger.warn('Pre-existing data found! Canceling creation due to probable conflict.')
+                    return res.status(409).json({
+                        success: false,
+                        message: `There is already an existing record with ${JSON.stringify(ps_payload).replaceAll('\"', "'")}`,
+                        response: null
+                    })
+                }
+
             }
-            
+
             // create with validated data
             this.logger.info(`${req.logprefix} Creating on model...`)
             let result = await this.Model.create(payload)
@@ -152,9 +170,9 @@ class BaseController {
         }
     }
 
-    async query (req, res, next) {
-        const _FUNC = FUNC_SUFFIX+'query'+FUNC_POSTFIX
-        this.logger.info(_FUNC+`${req.logprefix}\nBody: ${JSON.stringify(req.body)}\nQuery: ${JSON.stringify(req.query)}\nParams: ${JSON.stringify(req.params)}`)
+    async query(req, res, next) {
+        const _FUNC = FUNC_SUFFIX + 'query' + FUNC_POSTFIX
+        this.logger.info(_FUNC + `${req.logprefix}\nBody: ${JSON.stringify(req.body)}\nQuery: ${JSON.stringify(req.query)}\nParams: ${JSON.stringify(req.params)}`)
         try {
             const handlers = {
                 query: async (query) => {
@@ -195,19 +213,19 @@ class BaseController {
     };
 
 
-    async update (req, res, next) {
-        const _FUNC = FUNC_SUFFIX+'update'+FUNC_POSTFIX
-        this.logger.info(_FUNC+`${req.logprefix}\nBody: ${JSON.stringify(req.body)}\nQuery: ${JSON.stringify(req.query)}\nParams: ${JSON.stringify(req.params)}`)
+    async update(req, res, next, options = { block_api_param: ['id'] }) {
+        const _FUNC = FUNC_SUFFIX + 'update' + FUNC_POSTFIX
+        this.logger.info(_FUNC + `${req.logprefix}\nBody: ${JSON.stringify(req.body)}\nQuery: ${JSON.stringify(req.query)}\nParams: ${JSON.stringify(req.params)}`)
         try {
             let idToUpdate;
             let payload;
             let result;
 
             if (!req.params.id) {
-                this.logger.debug(_FUNC+`${req.logprefix} No id provided`)
+                this.logger.debug(_FUNC + `${req.logprefix} No id provided`)
                 idToUpdate = await this.Model.getId(this.filterify(req.params))
             } else {
-                this.logger.debug(_FUNC+`${req.logprefix} Id provided`)
+                this.logger.debug(_FUNC + `${req.logprefix} Id provided`)
                 idToUpdate = req.params.id
             }
 
@@ -216,28 +234,28 @@ class BaseController {
                 id: parseInt(idToUpdate)
             }
 
-            this.logger.info(_FUNC+`${req.logprefix} Validating schema...`)
-            let schema = await this.getSchema({ merge_with: this.Schema.update(), as_skeleton: true, block_api_param: ['id']})
+            this.logger.info(_FUNC + `${req.logprefix} Validating schema...`)
+            let schema = await this.getSchema({ merge_with: this.Schema.update(), as_skeleton: true, block_api_param: options.block_api_param })
             payload = schema.strict().parse(payload)
 
-            this.logger.info(_FUNC+`${req.logprefix} Updating on model...`)
+            this.logger.info(_FUNC + `${req.logprefix} Updating on model...`)
             result = await this.Model.update(payload)
 
-            this.logger.info(_FUNC+`${req.logprefix} Sending response...`)
+            this.logger.info(_FUNC + `${req.logprefix} Sending response...`)
             return res.status(result.code).json(result)
         } catch (error) {
-            this.logger.error(_FUNC+`${req.logprefix} Processing failed: ${error.message}`);
+            this.logger.error(_FUNC + `${req.logprefix} Processing failed: ${error.message}`);
             next(error)
         }
     }
 
-    async delete (req, res, next) {
-        const _FUNC = FUNC_SUFFIX+'delete'+FUNC_POSTFIX
-        this.logger.info(_FUNC+`${req.logprefix}\nBody: ${JSON.stringify(req.body)}\nQuery: ${JSON.stringify(req.query)}\nParams: ${JSON.stringify(req.params)}`)
+    async delete(req, res, next) {
+        const _FUNC = FUNC_SUFFIX + 'delete' + FUNC_POSTFIX
+        this.logger.info(_FUNC + `${req.logprefix}\nBody: ${JSON.stringify(req.body)}\nQuery: ${JSON.stringify(req.query)}\nParams: ${JSON.stringify(req.params)}`)
         try {
             let idToDelete;
             let result;
-            
+
             this.logger.info(`${req.logprefix} Obtaining id from model...`)
             idToDelete = await this.Model.getId(this.filterify(req.params))
 
@@ -247,7 +265,7 @@ class BaseController {
             }
 
             this.logger.info(`${req.logprefix} Target record id: ${JSON.stringify(idToDelete)}: Deleting on model...`)
-            result = await this.Model.delete({id: parseInt(idToDelete)})
+            result = await this.Model.delete({ id: parseInt(idToDelete) })
 
             this.logger.info(`${req.logprefix} Sending response...`)
             return res.status(result.code).json(result)

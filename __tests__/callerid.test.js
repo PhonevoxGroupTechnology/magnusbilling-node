@@ -58,7 +58,7 @@ describe("CalleridController mocking: payload formatting to Model.query", () => 
         const expectedFirstPayload = {
             "module": "callerid",
             "action": "read",
-            "filter": "[{\"type\":\"string\",\"field\":\"cid\",\"value\":\"Expected cid\",\"comparison\":\"eq\"},{\"type\":\"number\",\"field\":\"id_user\",\"value\":52416532054094,\"comparison\":\"eq\"}]",
+            "filter": "[{\"type\":\"number\",\"field\":\"id_user\",\"value\":52416532054094,\"comparison\":\"eq\"},{\"type\":\"string\",\"field\":\"cid\",\"value\":\"Expected cid\",\"comparison\":\"eq\"}]",
         }
 
         const expectedSecondPayload = {
