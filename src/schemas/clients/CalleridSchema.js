@@ -19,7 +19,7 @@ class CalleridSchema {
   // what is needed to read an user (along with api structure)
   static read() {
     return z.object({
-      id: z.string().optional(),
+      id: z.number().optional(),
     });
   }
 
