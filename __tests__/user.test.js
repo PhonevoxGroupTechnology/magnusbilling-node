@@ -2,20 +2,21 @@ import 'dotenv/config';
 import * as chai from 'chai';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
-import UserModel from '../src/models/clients/UserModel.js';
-import UserController from '../src/controllers/clients/UserController.js';
 import { logging } from '../src/utils/logging.js'
 import { createMocks } from './helpers/mocks.js';
+const { assert, expect } = chai;
+// for this test
+import UserModel from '../src/models/clients/UserModel.js';
+import UserController from '../src/controllers/clients/UserController.js';
 
 chai.use(sinonChai);
-const { assert, expect } = chai;
 
-const api_logger = logging.getLogger("api");
+// const api_logger = logging.getLogger("api");
 const test_logger = logging.getLogger("test");
 const transport_console = new logging.transports.Console()
 
-api_logger.addTransport(transport_console);
-api_logger.setLevel("trace")
+// api_logger.addTransport(transport_console);
+// api_logger.setLevel("trace")
 
 test_logger.addTransport(transport_console);
 test_logger.setLevel("unit")
@@ -140,7 +141,7 @@ describe("UserController payload formatting to Model.query", () => {
         assert.deepEqual(UserModelMock.stub.query.getCall(0).args[0], expectedPayload, "Payload is different from what we've expected to receive.")
     })
 
-    it("should format to update an user via req.params username", async () => {
+    it("should format to update an user via req.params id", async () => {
         const expectedPayload = {
             "module": "user",
             "action": "save",

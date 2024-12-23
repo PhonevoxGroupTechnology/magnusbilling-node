@@ -17,13 +17,15 @@ class SipSchema {
 
   // what is needed to update an user (besides api requirements)
   static update() {
-    return null;
+    return z.object({
+      id: z.number(),
+    });
   }
 
   // what is needed to read an user (along with api structure)
   static read() {
     return z.object({
-      id: z.string().optional(),
+      id: z.number().optional(),
     });
   }
 

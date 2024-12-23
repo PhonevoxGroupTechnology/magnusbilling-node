@@ -8,7 +8,7 @@ class UserModel extends BaseModel {
         super('user');
     }
 
-    async create(payload) {
+    create = async (payload) => {
         return await super.create({ ...payload, id: 0, createUser: 1 });
     }
 

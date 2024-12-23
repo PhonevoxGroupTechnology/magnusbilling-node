@@ -1,4 +1,7 @@
 import sinon from 'sinon';
+import { logging } from '../../src/utils/logging.js'
+
+const test_logger = logging.getLogger("test.mocks");
 
 export const createMocks = (body = {}) => {
     const req = {
@@ -14,7 +17,7 @@ export const createMocks = (body = {}) => {
     }
 
     const next = (...args) => {
-        console.log(`[MOCK-NEXT] ${args.join(' ')}`);
+        test_logger.error(`[createMocks:next] ${args.join(' ')}`);
     }
 
     return { req, res, next };

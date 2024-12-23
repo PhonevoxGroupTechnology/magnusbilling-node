@@ -1,13 +1,11 @@
 import { z } from "zod";
 
-class UserSchema {
+class CalleridSchema {
 
   // what is needed to create an user (besides api requirements)
   static create() {
     return z.object({
-      active: z.string().default("1"),
-      id_group: z.number().default(3),
-      email: z.string().email({ message: "Email inválido" }).min(1, "Email é obrigatório"),
+      // activated: z.string().default('1'),
     });
   }
 
@@ -33,4 +31,4 @@ class UserSchema {
   }
 }
 
-export default UserSchema
+export default CalleridSchema

@@ -136,7 +136,7 @@ class BaseModel {
             return this.success(200, 'Rules retrieved successfully', { response: {rules} });
         } catch (error) {
             this.logger.error(_FUNC+`Failed to retrieve rules: ${error.message}`);
-            return this.error(500, 'Failed to retrieve rules', { error });
+            return this.error(result?.code || 500, 'Failed to retrieve rules', { error });
         }
     }
 
@@ -173,7 +173,7 @@ class BaseModel {
             
             // Palhaçada esse "??" ai em. Prioriza data, depois rows, caso contrário nodata
             this.logger.debug(_FUNC+`Response: ${JSON.stringify(result?.response)}`);
-            return this.success(200, undefined, { response: result?.response?.data ?? result?.response?.rows[0] ?? 'nodata' });
+            return this.success(200, undefined, { response: result?.response?.data ?? result?.response?.rows ? result?.response?.rows[0] : [] });
         }
 
         this.logger.error(_FUNC+`Failed: ${JSON.stringify(result)}`);
@@ -203,12 +203,12 @@ class BaseModel {
 
         this.logger.trace(_FUNC+`Analyzing result...`);
         if (result.success) {
-            if (result.response.rows.length > 1) {
+            if (result?.response?.rows?.length > 1) {
                 this.logger.warn(_FUNC+`UNEXPECTED: More than one row returned: ${JSON.stringify(result?.response?.rows)}`);
             }
 
             this.logger.debug(_FUNC+`Response: ${JSON.stringify(result?.response)}`);
-            return this.success(200, result?.msg, { response: result.response.rows[0] ?? {} });
+            return this.success(200, result?.msg, { response: result?.response?.rows ?? [] });
         }
 
         this.logger.error(_FUNC+`Failed: ${JSON.stringify(result)}`);
