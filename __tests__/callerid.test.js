@@ -21,7 +21,7 @@ chai.use(sinonChai);
 // test_logger.addTransport(transport_console);
 // test_logger.setLevel("unit")
 
-describe("CalleridController payload formatting to Model.query", () => {
+describe("CalleridController mocking: payload formatting to Model.query", () => {
     let CalleridModelMock = {
         spy: {
             create: undefined,
@@ -54,7 +54,7 @@ describe("CalleridController payload formatting to Model.query", () => {
         ({ req, res, next } = createMocks());
     })
 
-    it("should format to create an callerid", async () => {
+    it("should format to create", async () => {
         const expectedFirstPayload = {
             "module": "callerid",
             "action": "read",
@@ -90,7 +90,7 @@ describe("CalleridController payload formatting to Model.query", () => {
         assert.deepEqual(second_payload, expectedSecondPayload, "Payload to create an record is different from what we've expected to receive.")
     })
 
-    it("should format to search an callerid via req.query", async () => {
+    it("should format to query:req.query", async () => {
         const expectedPayload = {
             "module": "callerid",
             "action": "read",
@@ -110,7 +110,7 @@ describe("CalleridController payload formatting to Model.query", () => {
         chai.assert.deepEqual(CalleridModelMock.stub.query.getCall(0).args[0], expectedPayload, "Payload is different from what we've expected to receive.")
     })
 
-    it("should format to find an callerid via id in req.params", async () => {
+    it("should format to query:req.params with id", async () => {
         const expectedPayload = {
             "module": "callerid",
             "action": "read",
@@ -129,7 +129,7 @@ describe("CalleridController payload formatting to Model.query", () => {
         chai.assert.deepEqual(CalleridModelMock.stub.query.getCall(0).args[0], expectedPayload, "Payload is different from what we've expected to receive.")
     })
 
-    it("should format to find an callerid via cid in req.params", async () => {
+    it("should format to query:req.query with cid", async () => {
         const expectedPayload = {
             "module": "callerid",
             "action": "read",
@@ -148,7 +148,7 @@ describe("CalleridController payload formatting to Model.query", () => {
         chai.assert.deepEqual(CalleridModelMock.stub.query.getCall(0).args[0], expectedPayload, "Payload is different from what we've expected to receive.")
     })
 
-    it("should format to update a sip account via req.params id", async () => {
+    it("should format to update:req.params with id", async () => {
         const expectedPayload = {
             "module": "callerid",
             "action": "save",

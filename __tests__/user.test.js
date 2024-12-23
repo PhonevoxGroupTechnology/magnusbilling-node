@@ -21,7 +21,7 @@ const transport_console = new logging.transports.Console()
 test_logger.addTransport(transport_console);
 test_logger.setLevel("unit")
 
-describe("UserController payload formatting to Model.query", () => {
+describe("UserController mocking: payload formatting to Model.query", () => {
     let UserModelMock = {
         spy: {
             create: undefined,
@@ -54,7 +54,7 @@ describe("UserController payload formatting to Model.query", () => {
         ({ req, res, next } = createMocks());
     })
 
-    it('should format to create an user', async () => {
+    it('should format to create', async () => {
         const expectedPayload = {
             "module": "user",
             "action": "save",
@@ -82,7 +82,7 @@ describe("UserController payload formatting to Model.query", () => {
         assert.deepEqual(UserModelMock.stub.query.getCall(0).args[0], expectedPayload, "Payload is different from what we've expected to receive.")
     })
 
-    it("should format to search an user via req.query", async () => {
+    it("should format to query:req.query", async () => {
         const expectedPayload = { 
             "module": "user", 
             "action": "read",
@@ -103,7 +103,7 @@ describe("UserController payload formatting to Model.query", () => {
         chai.assert.deepEqual(UserModelMock.stub.query.getCall(0).args[0], expectedPayload, "Payload is different from what we've expected to receive.")
     })
 
-    it("should format to find an user via id in req.params", async () => {
+    it("should format to query:req.params with id", async () => {
         const expectedPayload = { 
             "module": "user", 
             "action": "read",
@@ -122,7 +122,7 @@ describe("UserController payload formatting to Model.query", () => {
         assert.deepEqual(UserModelMock.stub.query.getCall(0).args[0], expectedPayload, "Payload is different from what we've expected to receive.")
     })
 
-    it("should format to find an user via username in req.params", async () => {
+    it("should format to query:req.params with username", async () => {
         const expectedPayload = { 
             "module": "user", 
             "action": "read",
@@ -141,7 +141,7 @@ describe("UserController payload formatting to Model.query", () => {
         assert.deepEqual(UserModelMock.stub.query.getCall(0).args[0], expectedPayload, "Payload is different from what we've expected to receive.")
     })
 
-    it("should format to update an user via req.params id", async () => {
+    it("should format to update:req.params with id", async () => {
         const expectedPayload = {
             "module": "user",
             "action": "save",

@@ -21,7 +21,9 @@ chai.use(sinonChai);
 // test_logger.addTransport(transport_console);
 // test_logger.setLevel("unit")
 
-describe("SipController payload formatting to Model.query", () => {
+// CalleridController mocking: payload formatting to Model.query
+
+describe("SipController mocking: payload formatting to Model.query", () => {
     let SipModelMock = {
         spy: {
             create: undefined,
@@ -54,7 +56,7 @@ describe("SipController payload formatting to Model.query", () => {
         ({ req, res, next } = createMocks());
     })
 
-    it("should format to create a sip account", async () => {
+    it("should format to create", async () => {
         const expectedPayload = {
             "module": "sip",
             "action": "save",
@@ -85,7 +87,7 @@ describe("SipController payload formatting to Model.query", () => {
         assert.deepEqual(SipModelMock.stub.query.getCall(0).args[0], expectedPayload, "Payload is different from what we've expected to receive.")
     })
 
-    it("should format to search sip account via req.query", async () => {
+    it("should format to query:req.query", async () => {
         const expectedPayload = {
             "module": "sip",
             "action": "read",
@@ -108,7 +110,7 @@ describe("SipController payload formatting to Model.query", () => {
         chai.assert.deepEqual(SipModelMock.stub.query.getCall(0).args[0], expectedPayload, "Payload is different from what we've expected to receive.")
     })
 
-    it("should format to find a sip account via id in req.params", async () => {
+    it("should format to query:req.params with id", async () => {
         const expectedPayload = {
             "module": "sip",
             "action": "read",
@@ -127,7 +129,7 @@ describe("SipController payload formatting to Model.query", () => {
         chai.assert.deepEqual(SipModelMock.stub.query.getCall(0).args[0], expectedPayload, "Payload is different from what we've expected to receive.")
     })
 
-    it("should format to find a sip account via defaultuser in req.params", async () => {
+    it("should format to query:req.params with defaultuser", async () => {
         const expectedPayload = {
             "module": "sip",
             "action": "read",
@@ -146,7 +148,7 @@ describe("SipController payload formatting to Model.query", () => {
         chai.assert.deepEqual(SipModelMock.stub.query.getCall(0).args[0], expectedPayload, "Payload is different from what we've expected to receive.")
     })
 
-    it("should format to update a sip account via req.params id", async () => {
+    it("should format to update:req.params with id", async () => {
         const expectedPayload = {
             "module": "sip",
             "action": "save",
