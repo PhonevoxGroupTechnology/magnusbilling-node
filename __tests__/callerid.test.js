@@ -129,7 +129,7 @@ describe("CalleridController mocking: payload formatting to Model.query", () => 
         chai.assert.deepEqual(CalleridModelMock.stub.query.getCall(0).args[0], expectedPayload, "Payload is different from what we've expected to receive.")
     })
 
-    it("should format to query:req.query with cid", async () => {
+    it("should format to query:req.params with cid", async () => {
         const expectedPayload = {
             "module": "callerid",
             "action": "read",
