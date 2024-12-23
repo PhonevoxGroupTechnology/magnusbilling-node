@@ -249,6 +249,7 @@ class MagnusModel {
         let response
         try {
             response = await axios.post(request_url, post_data, {
+                timeout: 5 * 1000, // 5 sec
                 headers: headers,
                 httpAgent: protocol === http ? agent : undefined,
                 httpsAgent: protocol === https ? agent : undefined,
@@ -260,7 +261,15 @@ class MagnusModel {
             return response.data;
         } catch (error) {
             logger.critical(`Failed to send request to ${request_url}: ${error}`)
-            return error
+
+            // @FIXME(adrian):
+            // this says everything is a timeout error. handle this better
+            return {
+                error: true,
+                success: false,
+                message: `${error.name}: ${error.message}`,
+                code: 504
+            }
         }
     }
 }

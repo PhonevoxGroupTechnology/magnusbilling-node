@@ -94,7 +94,7 @@ class BaseController {
 
     create = async (req, res, next) => {
         const _FUNC = FUNC_SUFFIX+'create'+FUNC_POSTFIX
-        this.logger.info(`${req.logprefix}\nBody: ${req.body}\nQuery: ${req.query}\nParams: ${req.params}`)
+        this.logger.info(_FUNC+`${req.logprefix}\nBody: ${JSON.stringify(req.body)}\nQuery: ${JSON.stringify(req.query)}\nParams: ${JSON.stringify(req.params)}`)
         try {
             let payload = req.body
 
@@ -119,7 +119,7 @@ class BaseController {
 
     query = async (req, res, next) => {
         const _FUNC = FUNC_SUFFIX+'query'+FUNC_POSTFIX
-        this.logger.info(`${req.logprefix}\nBody: ${req.body}\nQuery: ${req.query}\nParams: ${req.params}`)
+        this.logger.info(_FUNC+`${req.logprefix}\nBody: ${JSON.stringify(req.body)}\nQuery: ${JSON.stringify(req.query)}\nParams: ${JSON.stringify(req.params)}`)
         try {
             const handlers = {
                 query: async (query) => {
@@ -162,7 +162,7 @@ class BaseController {
 
     update = async (req, res, next) => {
         const _FUNC = FUNC_SUFFIX+'update'+FUNC_POSTFIX
-        this.logger.info(`${req.logprefix}\nBody: ${req.body}\nQuery: ${req.query}\nParams: ${req.params}`)
+        this.logger.info(_FUNC+`${req.logprefix}\nBody: ${JSON.stringify(req.body)}\nQuery: ${JSON.stringify(req.query)}\nParams: ${JSON.stringify(req.params)}`)
         try {
             let idToUpdate;
             let payload;
@@ -198,7 +198,7 @@ class BaseController {
 
     delete = async (req, res, next) => {
         const _FUNC = FUNC_SUFFIX+'delete'+FUNC_POSTFIX
-        this.logger.info(`${req.logprefix}\nBody: ${req.body}\nQuery: ${req.query}\nParams: ${req.params}`)
+        this.logger.info(_FUNC+`${req.logprefix}\nBody: ${JSON.stringify(req.body)}\nQuery: ${JSON.stringify(req.query)}\nParams: ${JSON.stringify(req.params)}`)
         try {
             let idToDelete;
             let result;

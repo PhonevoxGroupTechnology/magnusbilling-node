@@ -76,6 +76,16 @@ class BaseModel {
         try {
             let queryResult = await MagnusModel.query(payload);
 
+            //@FIXME(adrian):
+            // i dont quite like error handling done here
+            // handle this in a better way somehow
+
+            // most likely timeout error or axios-related failures
+            if (queryResult?.error) {
+                this.logger.error(_FUNC+`QUERY FAILURE: ${JSON.stringify(queryResult)}`);
+                return this.error(queryResult?.code, queryResult?.message);
+            }
+
             // generic magnus error: it always return this when something goes wrong
             if (queryResult?.response?.status == 500) {
                 this.logger.error(_FUNC+`GENERAL FAILURE: ${JSON.stringify(queryResult)}`);
@@ -166,8 +176,8 @@ class BaseModel {
             return this.success(200, undefined, { response: result?.response?.data ?? result?.response?.rows[0] ?? 'nodata' });
         }
 
-        this.logger.error(_FUNC+`Failed: ${result}`);
-        return this.error(500, result?.message, {});
+        this.logger.error(_FUNC+`Failed: ${JSON.stringify(result)}`);
+        return this.error(result?.code || 500, result?.message, {});
     }
 
     /**
@@ -201,8 +211,8 @@ class BaseModel {
             return this.success(200, result?.msg, { response: result.response.rows[0] ?? {} });
         }
 
-        this.logger.error(_FUNC+`Failed: ${result}`);
-        return this.error(500, result?.message);
+        this.logger.error(_FUNC+`Failed: ${JSON.stringify(result)}`);
+        return this.error(result?.code || 500, result?.message);
     }
 
     /**
@@ -237,8 +247,8 @@ class BaseModel {
         // I cant assume "500 = we ok", because this could mean a fucking server error for real.
         // @NOTE: above issue was solved in commit 31f0f05. will delete this comment eventually
 
-        this.logger.error(_FUNC+`Failed: ${result}`);
-        return this.error(500, `${result?.message} NOTE: You might want to check if the user actually exists, since we return this same error for non-existing user (blame magnusbilling returns).`, {});
+        this.logger.error(_FUNC+`Failed: ${JSON.stringify(result)}`);
+        return this.error(result?.code || 500, `${result?.message} NOTE: You might want to check if the user actually exists, since we return this same error for non-existing user (blame magnusbilling returns).`, {});
     }
 
     /**
@@ -263,8 +273,8 @@ class BaseModel {
             return this.success(200, 'Listed successfully', { response: result.response });
         } 
 
-        this.logger.error(`Failed: ${result}`);
-        return this.error(500, result?.message);
+        this.logger.error(_FUNC+`Failed: ${JSON.stringify(result)}`);
+        return this.error(result?.code || 500, result?.message);
     }
 
     /**
@@ -294,7 +304,7 @@ class BaseModel {
         }
 
         this.logger.error(_FUNC+`Failed: ${result}`);
-        return this.error(500, result?.message);
+        return this.error(result?.code || 500, result?.message);
     }
 
     /**
@@ -335,7 +345,7 @@ class BaseModel {
         }
 
         this.logger.error(_FUNC+`Failed: ${result}`);
-        return this.error(500, result?.message);
+        return this.error(result?.code || 500, result?.message);
     }
 }
 
