@@ -13,13 +13,10 @@ chai.use(sinonChai);
 
 // const api_logger = logging.getLogger("api");
 // const test_logger = logging.getLogger("test");
-// const transport_console = new logging.transports.Console()
+// const transport_console = new logging.transports.Console({level: logging.DEBUG})
 
 // api_logger.addTransport(transport_console);
-// api_logger.setLevel("trace")
-
 // test_logger.addTransport(transport_console);
-// test_logger.setLevel("unit")
 
 describe("CalleridController mocking: payload formatting to Model.query", () => {
     let CalleridModelMock = {

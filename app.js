@@ -7,8 +7,9 @@ import { setLogPrefix } from './src/middlewares/Utility.js';
 import getRouter from './src/routes/index.js';
 
 const api_logger = logging.getLogger('api');
-const transport_console = new logging.transports.Console()
+const transport_console = new logging.transports.Console({level: logging.DEBUG})
 const transport_file = new logging.transports.FileRotate({
+    level: logging.UNIT,
     filename: './logs/runtime-%DATE%.log',
     maxSize: '20m',
     maxFiles: '14d',
@@ -24,7 +25,6 @@ if (process.env.NODE_ENV !== 'test') {
     app.listen(process.env.EXPRESS_PORT, () => {
         api_logger.addTransport(transport_console);
         api_logger.addTransport(transport_file);
-        api_logger.setLevel('trace')
         api_logger.info(`Server is running on port ${process.env.EXPRESS_PORT}`);
     });
 }
