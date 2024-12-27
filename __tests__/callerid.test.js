@@ -11,12 +11,12 @@ import CalleridController from '../src/controllers/clients/CalleridController.js
 
 chai.use(sinonChai);
 
-// const api_logger = logging.getLogger("api");
-// const test_logger = logging.getLogger("test");
-// const transport_console = new logging.transports.Console({level: logging.DEBUG})
+const api_logger = logging.getLogger("api");
+const test_logger = logging.getLogger("test");
+const transport_console = new logging.transports.Console({level: logging.TRACE})
 
-// api_logger.addTransport(transport_console);
-// test_logger.addTransport(transport_console);
+api_logger.addTransport(transport_console);
+test_logger.addTransport(transport_console);
 
 describe("CalleridController mocking: payload formatting to Model.query", () => {
     let CalleridModelMock = {
@@ -33,6 +33,12 @@ describe("CalleridController mocking: payload formatting to Model.query", () => 
             query: undefined,
         }
     }
+    let CallerIdControllerMock = {
+        stub: {
+            getId: undefined,
+        }
+    }
+    
     let req;
     let res;
     let next;
@@ -42,7 +48,9 @@ describe("CalleridController mocking: payload formatting to Model.query", () => 
         CalleridModelMock.spy.update = sinon.spy(CalleridModel, "update");
         CalleridModelMock.spy.delete = sinon.spy(CalleridModel, "delete");
         CalleridModelMock.stub.query = sinon.stub(CalleridModel, "query");
-        CalleridModelMock.stub.query.resolves({ success: true, message: "Mock response", response: { "Mock": "response" } });
+        CallerIdControllerMock.stub.getId = sinon.stub(CalleridController, "getId");
+        CalleridModelMock.stub.query.resolves({ success: true, message: "Mock response", data: { "Mock": "response" } });
+        CallerIdControllerMock.stub.getId.resolves([52416532054094]);
         ({ req, res, next } = createMocks()); // prepare the fake request
     })
 
@@ -52,13 +60,8 @@ describe("CalleridController mocking: payload formatting to Model.query", () => 
     })
 
     it("should format to create", async () => {
-        const expectedFirstPayload = {
-            "module": "callerid",
-            "action": "read",
-            "filter": "[{\"type\":\"number\",\"field\":\"id_user\",\"value\":52416532054094,\"comparison\":\"eq\"},{\"type\":\"string\",\"field\":\"cid\",\"value\":\"Expected cid\",\"comparison\":\"eq\"}]",
-        }
-
-        const expectedSecondPayload = {
+        CallerIdControllerMock.stub.getId.resolves();
+        const expectedPayload = {
             "module": "callerid",
             "action": "save",
             "cid": "Expected cid",
@@ -76,15 +79,10 @@ describe("CalleridController mocking: payload formatting to Model.query", () => 
 
         // assertions
         expect(CalleridModelMock.spy.create).to.have.been.calledOnce
-        expect(CalleridModelMock.stub.query).to.have.been.calledTwice
+        expect(CalleridModelMock.stub.query).to.have.been.calledOnce
 
-        // this is to search if record already exists
-        const first_payload = CalleridModelMock.stub.query.getCall(0).args[0]
-        assert.deepEqual(first_payload, expectedFirstPayload, "Payload to check if a record exists is different from what we've expected to receive.")
-
-        // this is to create new record
-        const second_payload = CalleridModelMock.stub.query.getCall(1).args[0]
-        assert.deepEqual(second_payload, expectedSecondPayload, "Payload to create an record is different from what we've expected to receive.")
+        const payload = CalleridModelMock.stub.query.getCall(0).args[0]
+        assert.deepEqual(payload, expectedPayload, "Payload to create an record is different from what we've expected to receive.")
     })
 
     it("should format to query:req.query", async () => {

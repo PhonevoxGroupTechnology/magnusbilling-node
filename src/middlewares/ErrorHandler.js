@@ -1,10 +1,14 @@
 import { ZodError } from 'zod';
 import { logging } from '../utils/logging.js';
+import { QueryError, MagnusError } from '../utils/errors.js';
+import axios from 'axios';
 
 const logger = logging.getLogger('api.middlewares.errorhandler');
 const validation_logger = logging.getLogger('api.validation');
 
 const isZodError = (err) => { if (err instanceof ZodError) return true; return false; };
+const isAxiosError = (err) => { if (err instanceof axios.AxiosError) return true; return false; };
+const isMagnusError = (err) => { if (err instanceof QueryError || err instanceof MagnusError) return true; return false; };
 
 // obrigado rafael rizzo
 const formatZodErrors = (error) => {
@@ -19,14 +23,53 @@ const formatZodErrors = (error) => {
 
 export const handleUnexpected = (err, req, res, next) => {
 
+    // IF TRANSPARENT, RETURN WHAT HAPPENED CLEANLY
+    if (process.env.TRANSPARENT_ERRORS === 'true') {
+        logger.critical(`${req.logprefix} Unexpected error:\n${err.stack}`)
+        return res.status(500).json({ success: false, data: null, error: { message: err.message, details: err.stack } });
+    }
+
     // handling zod errors
     if (isZodError(err)) {
-        let error = formatZodErrors(err);
-        validation_logger.warn(`${req.logprefix} Validation error:\n${JSON.stringify(error)}`);
-        return res.status(400).json({success: false, code: 400, response: {}, errors: error});
+        validation_logger.debug(`${req.logprefix} Validation Error:`, err.issues);
+        return res.status(400).json({
+            success: false,
+            data: null,
+            error: {
+                message: 'Failed to validate request data.',
+                details: formatZodErrors(err) || 'No additional details available.',
+            }
+        });
+    }
+
+    // request errors (like timeouts etc)
+    if (isAxiosError(err)) {
+        logger.debug(`${req.logprefix} Request Error (AXIOS):`, err.message);
+        return res.status(err.response?.status || 500).json({
+            success: false,
+            data: null,
+            error: {
+                message: `Request Error: ${err.message}`,
+                details: err.response?.data || 'No additional details available.',
+            },
+        });
+    }
+
+    if (isMagnusError(err)) {
+        logger.debug(`${req.logprefix} ${err.name}:`, err.message);
+        // se for QueryError, o status é 400, se não, o status é 500
+
+        return res.status(err.status || (err instanceof QueryError) ? 400 : 500).json({
+            success: false,
+            data: null,
+            error: {
+                message: err.message,
+                details: err.details || 'No additional details available.',
+            },
+        });
     }
 
     // unexpected errors
-    logger.critical(`${req.logprefix} Generic error:\n${err.stack}`)
-    return res.status(500).json({success: false, code: 500, response: {}, errors: 'Uh oh. Something went wrong. For more information, check server logs.'});
+    logger.critical(`${req.logprefix} Generic error:`, err.stack || err)
+    return res.status(500).json({ success: false, data: null, error: 'Uh oh. Something went wrong. For more information, check server logs.' });
 }

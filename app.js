@@ -7,7 +7,7 @@ import { setLogPrefix } from './src/middlewares/Utility.js';
 import getRouter from './src/routes/index.js';
 
 const api_logger = logging.getLogger('api');
-const transport_console = new logging.transports.Console({level: logging.DEBUG})
+const transport_console = new logging.transports.Console({ level: logging.UNIT })
 const transport_file = new logging.transports.FileRotate({
     level: logging.UNIT,
     filename: './logs/runtime-%DATE%.log',

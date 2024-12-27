@@ -1,48 +1,21 @@
 import MagnusModel from "./MagnusModel.js";
 import { logging } from '../utils/logging.js';
 
-const FUNC_SUFFIX = '';
-const FUNC_POSTFIX = ' - ';
-
-class MagnusBillingAPI extends Error {
-    constructor(message, statusCode = 500) {
-        super(message); // Define a mensagem do erro
-        this.name = 'MagnusBillingAPIError'; // Define o nome do erro
-        this.statusCode = statusCode; // Adiciona um status HTTP opcional
-        Error.captureStackTrace(this, this.constructor); // Captura o stack trace correto
-    }
-}
-
+// To generate padronized responses from Model back to Controller
 class ModelReplier {
-    /**
-     * Makes a successful response
-     * @param {int} code        - Status code
-     * @param {string} message  - Informative message for response
-     * @param {Object} data     - Additional data for response
-     * @returns {Object}        - Formatted response
-     */
-    static success(code, message, data = {}) {
+    static success(content = { data: null }) {
         return {
             success: true,
-            message,
-            code,
-            ...data,
+            data: content.data,
+            error: null,
         };
     }
 
-    /**
-     * Makes an errorful response
-     * @param {int} code        - Status code
-     * @param {string} message  - Informative message for response
-     * @param {Object} data     - Additional data for response
-     * @returns {Object}        - Formatted response
-     */
-    static error(code, message, data = {}) {
+    static fail(content = { data: null, error: null }) {
         return {
             success: false,
-            message,
-            code,
-            ...data,
+            data: content.data,
+            error: content.error,
         };
     }
 }
@@ -54,89 +27,49 @@ class BaseModel {
     }
 
     /**
-     * Utilitary method to create success responses
-     */
-    success(code, message, data = {}) {
-        return ModelReplier.success(code, message, data);
-    }
-
-    /**
-     * Utilitary method to create error responses.
-     */
-    error(code, message, data = {}) {
-        return ModelReplier.error(code, message, data);
-    }
-
-    /**
      * Generic method to query the MagnusModel.
      */
     async query(payload) {
-        const _FUNC = FUNC_SUFFIX + 'query' + FUNC_POSTFIX;
-        this.logger.trace(_FUNC+`Querying MagnusBilling API with payload: ${JSON.stringify(payload)}`);
+
         try {
-            let queryResult = await MagnusModel.query(payload);
+            const result = await MagnusModel.query(payload);
 
-            //@FIXME(adrian):
-            // i dont quite like error handling done here
-            // handle this in a better way somehow
+            this.logger.trace(`BaseModel Query result: ${JSON.stringify(result)}`)
 
-            // most likely timeout error or axios-related failures
-            if (queryResult?.error) {
-                this.logger.error(_FUNC+`QUERY FAILURE: ${JSON.stringify(queryResult)}`);
-                return this.error(queryResult?.code, queryResult?.message);
+            // @TODO(adrian): this is ugly. work something out? (this works tho)
+            // the problem is that on a query success, when we search someone, read magnus, it DOES NOT returns "success" for us
+            // so we need to check the existance of other fields to confirm it was a successful request
+            // (or, in this case, the opposite, every field needs to be missing to be considered a fail, otherwise its a success)
+            if (!result.success && !result.rows && !result.count) {
+                return ModelReplier.fail({
+                    data: null,
+                    error: result?.errors || result || "Unknown error",
+                });
             }
 
-            // generic magnus error: it always return this when something goes wrong
-            if (queryResult?.response?.status == 500) {
-                this.logger.error(_FUNC+`GENERAL FAILURE: ${JSON.stringify(queryResult)}`);
-                throw new MagnusBillingAPI('MagnusBilling API Error', 500);
-            }
-
-            // query explicitly failed
-            if (queryResult?.success == false) {
-                this.logger.error(_FUNC+`EXPLICIT FAILURE: ${JSON.stringify(queryResult)}`);
-                let MESSAGE = queryResult?.errors;
-                return this.error(undefined, MESSAGE);
-            }
-
-            // this is really idiotic, default behaviour should be throw, but i cant do that since "success" field doesnt
-            // come in every request! (list for example)
-            this.logger.trace(_FUNC+`Query executed successfully`);
-            return this.success(undefined, 'Query executed successfully', { response: queryResult });
-
+            return ModelReplier.success({
+                data: result
+            });
         } catch (error) {
-            this.logger.error(_FUNC+`Query execution failed: ${error.message}`);
-            return this.error(error?.code, error?.message ?? 'Query execution failed');
+            throw error;
         }
     }
 
-    /**
-     * Obtain the validation rules for the current module.
-     * 
-     * @param {Object} [options]                    - Optional configs for rule returning format
-     * @param {boolean} [options.as_schema=false]   - Return as z.object() (zod schema)
-     * @param {boolean} [options.as_skeleton=false] - Return schema as z.any().optional(): only care about structure
-     * 
-     * @returns                                     - Validation rules for this module
-     */
     async getRules(options = { as_schema: false, as_skeleton: false, block_param: [] }) {
-        const _FUNC = FUNC_SUFFIX + 'getRules' + FUNC_POSTFIX;
-        const { as_schema = false, as_skeleton = false, block_param = [] } = options;
-
         try {
-            this.logger.trace(_FUNC+`Getting rules for module ${this.module} from MagnusModel`);
-            const rules = await MagnusModel.getRules(this.module, as_schema, as_skeleton, block_param);
+            const rules = await MagnusModel.getRules(this.module, options.as_schema, options.as_skeleton, options.block_param);
 
-            if (as_schema || as_skeleton) {
-                this.logger.trace(_FUNC+`Returning rules as ${as_schema ? 'schema' : 'skeleton'}`);
-                return rules;
-            }
+            let retvalue = rules;
+            if (options.as_schema) retvalue = rules;
+            if (!(options.as_schema || options.as_skeleton)) this.logger.warn('Returning rules as plain JSON')
 
-            this.logger.trace(_FUNC+`Returning rules as JSON`);
-            return this.success(200, 'Rules retrieved successfully', { response: {rules} });
+            return ModelReplier.success({
+                data: retvalue,
+            });
         } catch (error) {
-            this.logger.error(_FUNC+`Failed to retrieve rules: ${error.message}`);
-            return this.error(result?.code || 500, 'Failed to retrieve rules', { error });
+            return ModelReplier.fail({
+                error: `Failed to retrieve rules: ${error.message}`,
+            });
         }
     }
 
@@ -151,202 +84,109 @@ class BaseModel {
      * @returns                             - Result of operation
      */
     async create(userPayload) {
-        const _FUNC = FUNC_SUFFIX + 'create' + FUNC_POSTFIX;
-        this.logger.trace(_FUNC+`Creating new record with payload ${JSON.stringify(userPayload)}`);
         const payload = {
             ...userPayload,
             module: this.module,
             action: 'save',
         };
 
-        this.logger.trace(_FUNC+`Sending query...`);
-        const result = await this.query(payload);
+        try {
+            const result = await this.query(payload);
 
-        this.logger.trace(_FUNC+`Analyzing result...`);
-        if (result?.success) {
-            
-            if (result?.response?.rows && result?.response?.rows?.length > 1) {
-                // NÃO FAZ SENTIDO RETORNAR MAIS DE 1 NO ROWS, ENTÃO VOU DEIXAR ACESSANDO O PRIMEIRO ITEM DO ARRAY MESMO
-                // VÁ SE FUDER
-                this.logger.warn(_FUNC+`UNEXPECTED: More than one row returned: ${JSON.stringify(result?.response?.rows)}`);
+            this.logger.warn('Create on basemodel: ', result);
+
+            if (result?.success) {
+                return ModelReplier.success({
+                    data: result.data,
+                });
+            } else {
+                return ModelReplier.fail({
+                    data: null,
+                    error: result?.message || result?.error || "Create failed for unknown reasons",
+                });
             }
-            
-            // Palhaçada esse "??" ai em. Prioriza data, depois rows, caso contrário nodata
-            this.logger.debug(_FUNC+`Response: ${JSON.stringify(result?.response)}`);
-            return this.success(200, undefined, { response: result?.response?.data ?? result?.response?.rows ? result?.response?.rows[0] : [] });
+        } catch (error) {
+            return ModelReplier.fail({
+                data: null,
+                error: error,
+            });
         }
-
-        this.logger.error(_FUNC+`Failed: ${JSON.stringify(result)}`);
-        return this.error(result?.code || 500, result?.message, {});
     }
 
-    /**
-     * Update something on your module
-     * 
-     * @param {Object} userPayload      - Object (JSON) with the new values, AND the ID to update. The ID refers to the actual item that will be updated.
-     * @param {int} userPayload.id      - ID of the item to be updated
-     * @param {*} userPayload.<field>   - Field that will be updated
-     * 
-     * @returns                         - Result of operation
-     */
+
+    // updated, needs testing. to test Controller.update() we need to fix getRules first
     async update(userPayload) {
-        const _FUNC = FUNC_SUFFIX + 'update' + FUNC_POSTFIX;
-        this.logger.trace(_FUNC+`Updating record with payload ${JSON.stringify(userPayload)}`);
         const payload = {
             ...userPayload,
             module: this.module,
             action: 'save',
         };
 
-        this.logger.trace(_FUNC+`Sending query...`);
-        const result = await this.query(payload);
+        try {
+            const result = await this.query(payload);
 
-        this.logger.trace(_FUNC+`Analyzing result...`);
-        if (result.success) {
-            if (result?.response?.rows?.length > 1) {
-                this.logger.warn(_FUNC+`UNEXPECTED: More than one row returned: ${JSON.stringify(result?.response?.rows)}`);
+            if (result?.success) {
+                return ModelReplier.success({
+                    data: result.data,
+                });
+            } else {
+                return ModelReplier.fail({
+                    data: null,
+                    error: result?.message || "Update failed for unknown reasons",
+                });
             }
-
-            this.logger.debug(_FUNC+`Response: ${JSON.stringify(result?.response)}`);
-            return this.success(200, result?.msg, { response: result?.response?.rows ?? [] });
+        } catch (error) {
+            return ModelReplier.fail({
+                data: null,
+                error: `Unexpected error: ${error.message}`,
+            });
         }
-
-        this.logger.error(_FUNC+`Failed: ${JSON.stringify(result)}`);
-        return this.error(result?.code || 500, result?.message);
     }
 
-    /**
-     * Delete something on your module
-     * 
-     * @param {Object} userPayload   - Object (JSON) with the ID to delete
-     * @param {int} userPayload.id   - ID of the item to be deleted
-     * 
-     * @returns                     - Result of operation
-     */
-    async delete(userPayload) {
-        const _FUNC = FUNC_SUFFIX + 'delete' + FUNC_POSTFIX;
-        this.logger.trace(_FUNC+`Deleting record with payload ${JSON.stringify(userPayload)}`);
-        const { id } = userPayload;
+    async delete(input = { id: undefined }) {
         const payload = {
-            id: id,
+            id: input.id,
             module: this.module,
             action: 'destroy',
         };
 
-        this.logger.trace(_FUNC+`Sending query...`);
-        const result = await this.query(payload);
+        try {
+            const result = await this.query(payload);
 
-        this.logger.trace(_FUNC+`Analyzing result...`);
-        if (result?.success) {
-            this.logger.debug(`Response: ${JSON.stringify(result?.response)}`);
-            return this.success(200, result?.msg, { response: {id: id} });
-        } 
-        // @FIXME
-        // Either if query fails or theres no user with that id, Magnus returns a fucking code 500 for both. 
-        // Meaning we have to do an ADDITIONAL QUERY just to check if the user existed in the first place. 
-        // I cant assume "500 = we ok", because this could mean a fucking server error for real.
-        // @NOTE: above issue was solved in commit 31f0f05. will delete this comment eventually
-
-        this.logger.error(_FUNC+`Failed: ${JSON.stringify(result)}`);
-        return this.error(result?.code || 500, `${result?.message} NOTE: You might want to check if the user actually exists, since we return this same error for non-existing user (blame magnusbilling returns).`, {});
+            if (result?.success) {
+                return ModelReplier.success({
+                    data: { id: input.id },
+                });
+            } else {
+                return ModelReplier.fail({
+                    data: null,
+                    error: result?.message || "Deletion failed for unknown reasons",
+                });
+            }
+        } catch (error) {
+            return ModelReplier.fail({
+                data: null,
+                error: `Unexpected error: ${error.message}`,
+            });
+        }
     }
 
-    /**
-     * List everything on your module
-     * 
-     * @returns - Result of operation
-     */
     async list() {
-        const _FUNC = FUNC_SUFFIX + 'list' + FUNC_POSTFIX;
-        this.logger.trace(_FUNC+`Listing all records...`);
-        const payload = {
-            module: this.module,
-            action: 'read',
-        };
-
-        this.logger.trace(_FUNC+`Sending query...`);
-        const result = await this.query(payload);
-
-        this.logger.trace(_FUNC+`Analyzing result...`);
-        if (result.success) {
-            this.logger.debug(_FUNC+`Response: ${JSON.stringify(result?.response)}`);
-            return this.success(200, 'Listed successfully', { response: result.response });
-        } 
-
-        this.logger.error(_FUNC+`Failed: ${JSON.stringify(result)}`);
-        return this.error(result?.code || 500, result?.message);
+        return await this.find(undefined); // XD
     }
 
-    /**
-     * This is a custom method to find a specific record by ID.
-     * 
-     * @param {string} filter       - All your filters, stringified the way Magnus' wants. Most likely came from a filterify()
-     * 
-     * @returns - Result of operation
-     */
     async find(filter) {
-        const _FUNC = FUNC_SUFFIX + 'find' + FUNC_POSTFIX;
-        this.logger.trace(_FUNC+`Finding record with filter ${filter}`);
         const payload = {
             filter,
             module: this.module,
             action: 'read',
         };
 
-        this.logger.trace(_FUNC+`Sending query...`);
-        const result = await this.query(payload);
-
-        this.logger.trace(_FUNC+`Analyzing result...`);
-        if (result.success) {
-
-            this.logger.debug(_FUNC+`Response: ${JSON.stringify(result?.response)}`);
-            return this.success(200, 'Found data', { response: result.response });
-        }
-
-        this.logger.error(_FUNC+`Failed: ${result}`);
-        return this.error(result?.code || 500, result?.message);
+        // query should return a ModelReplier object
+        // we just pass it on
+        return await this.query(payload);
     }
 
-    /**
-     * This is a custom method to return the ID of a specific record, by filter.
-     * 
-     * @param {string} filter       - All your filters, stringified the way Magnus' wants. Most likely came from a filterify()
-     * 
-     * @returns - Result of operation
-     */
-    async getId(filter) {
-        const _FUNC = FUNC_SUFFIX + 'getId' + FUNC_POSTFIX;
-        this.logger.trace(_FUNC+`Finding ID with filter ${filter}`);
-        const payload = {
-            filter,
-            module: this.module,
-            action: 'read',
-        };
-
-        this.logger.trace(_FUNC+`Sending query...`);
-        const result = await this.query(payload);
-
-        this.logger.trace(_FUNC+`Analyzing result...`);
-        if (result.success) {
-
-            if (!result.response.rows || result.response.rows.length === 0 || !result.response.rows[0].id) {
-                this.logger.warn(_FUNC+`No ID found`);
-                return this.error(404, 'ID not found', { id: null });
-            }
-
-            if (result.response.rows.length > 1) {
-                let FOUND_IDS = result.response.rows.map(row => row.id);
-                this.logger.warn(_FUNC+`Multiple IDs found: ${FOUND_IDS}`);
-                return this.error(409, 'Multiple IDs found', { id: FOUND_IDS });
-            }
-
-            this.logger.debug(_FUNC+`ID found: ${result.response.rows[0].id}`);
-            return result.response.rows[0].id
-        }
-
-        this.logger.error(_FUNC+`Failed: ${result}`);
-        return this.error(result?.code || 500, result?.message);
-    }
 }
 
 export default BaseModel;

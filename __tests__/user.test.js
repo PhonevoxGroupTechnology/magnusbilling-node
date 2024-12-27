@@ -33,6 +33,12 @@ describe("UserController mocking: payload formatting to Model.query", () => {
             query: undefined,
         }
     }
+    let UserControllerMock = {
+        stub: {
+            getId: undefined,
+        }
+    }
+
     let req;
     let res;
     let next;
@@ -42,7 +48,9 @@ describe("UserController mocking: payload formatting to Model.query", () => {
         UserModelMock.spy.update = sinon.spy(UserModel, "update");
         UserModelMock.spy.delete = sinon.spy(UserModel, "delete");
         UserModelMock.stub.query = sinon.stub(UserModel, "query");
+        UserControllerMock.stub.getId = sinon.stub(UserController, "getId");
         UserModelMock.stub.query.resolves({ success: true, message: "Mock response", response: {"Mock": "response"} });
+        UserControllerMock.stub.getId.resolves([52416532054094]);
         ({ req, res, next } = createMocks()); // prepare the fake request
     })
 
@@ -52,6 +60,7 @@ describe("UserController mocking: payload formatting to Model.query", () => {
     })
 
     it('should format to create', async () => {
+        UserControllerMock.stub.getId.resolves(null) // Simulate theres not an existing record on Magnus
         const expectedPayload = {
             "module": "user",
             "action": "save",

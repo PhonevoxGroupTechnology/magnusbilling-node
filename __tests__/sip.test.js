@@ -35,6 +35,12 @@ describe("SipController mocking: payload formatting to Model.query", () => {
             query: undefined,
         }
     }
+    let SipControllerMock = {
+        stub: {
+            getId: undefined,
+        }
+    }
+
     let req;
     let res;
     let next;
@@ -44,7 +50,9 @@ describe("SipController mocking: payload formatting to Model.query", () => {
         SipModelMock.spy.update = sinon.spy(SipModel, "update");
         SipModelMock.spy.delete = sinon.spy(SipModel, "delete");
         SipModelMock.stub.query = sinon.stub(SipModel, "query");
+        SipControllerMock.stub.getId = sinon.stub(SipController, "getId");
         SipModelMock.stub.query.resolves({ success: true, message: "Mock response", response: { "Mock": "response" } });
+        SipControllerMock.stub.getId.resolves([52416532054094]);
         ({ req, res, next } = createMocks()); // prepare the fake request
     })
 

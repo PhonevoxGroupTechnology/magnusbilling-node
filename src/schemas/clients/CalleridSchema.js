@@ -17,16 +17,17 @@ class CalleridSchema {
   }
 
   // what is needed to read an user (along with api structure)
+  // id must be any because on req.query, everything is always string
   static read() {
     return z.object({
-      id: z.number().optional(),
+      id: z.any().optional(),
     });
   }
 
   // you can only delete by id
   static delete() {
     return z.object({
-      id: z.number().int({ message: "id é obrigatório para remoção" }),
+      id: z.number().int({ message: "ID is required for deletion" }),
     });
   }
 }

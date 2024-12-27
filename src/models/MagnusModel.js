@@ -5,6 +5,8 @@ import { createHmac } from 'crypto';
 import { logging } from '../utils/logging.js'
 import { format } from 'path';
 import { z } from 'zod';
+import { QueryError, MagnusError } from '../utils/errors.js';
+// @TODO(adrian): implement those better?
 
 const logger = logging.getLogger('api.model.magnus');
 
@@ -221,7 +223,7 @@ class MagnusModel {
     }
 
     async query(data) {
-        // TODO(adrian): make this support multi-id action:destroy
+        // @TODO(adrian): make this support multi-id action:destroy
         // for now, no need. // 09/12/24, 16:22
         logger.trace(`MBQuery - Sending query to MagnusBilling...`)
         logger.debug(`MBQuery - Data: ${JSON.stringify(data)}`)
@@ -258,18 +260,23 @@ class MagnusModel {
             logger.trace(`MBQuery - Response received.`)
             logger.unit(`Received response from ${request_url}\n${JSON.stringify(response.data)}`)
             logger.unit(`- Response: ${JSON.stringify(response.data)}`)
+
+            if (response?.data?.success === false) {
+                throw new QueryError(response.data.errors || response.data)
+            }
+
             return response.data;
         } catch (error) {
             logger.critical(`Failed to send request to ${request_url}: ${error}`)
 
-            // @FIXME(adrian):
-            // this says everything is a timeout error. handle this better
-            return {
-                error: true,
-                success: false,
-                message: `${error.name}: ${error.message}`,
-                code: 504
-            }
+            // axios error
+            if (error instanceof axios.AxiosError) throw error
+
+            // explicit magnus telling that your query failed to be processed
+            if (error instanceof QueryError) throw error
+
+            // general error
+            throw new MagnusError(`Failed to send request to ${request_url}: ${error}`)
         }
     }
 }
