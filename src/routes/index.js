@@ -5,11 +5,13 @@ import routerCallerid from './clients/CalleridRoute.js';
 import routerSipuras from './clients/AtalinksysRoute.js';
 import routerIax from './clients/IaxRoute.js';
 import routerRestrictedNumber from './clients/RestrictedNumberRoute.js';
+import routerUserHistory from './clients/UserHistoryRoute.js';
 import routerTest from './tests/TestRoute.js';
 import { handleUnexpected } from '../middlewares/ErrorHandler.js';
 
 const router = Router();
 
+router.use('/clients', routerUserHistory);
 router.use('/clients', routerRestrictedNumber); // essa bosta nao tem regras de api, tem que fazer lógica pra isso
 router.use('/clients', routerIax);
 router.use('/clients', routerSipuras);

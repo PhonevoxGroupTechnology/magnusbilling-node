@@ -5,7 +5,7 @@ import BaseController from '../BaseController.js'
 class RestrictedNumberController extends BaseController {
     constructor() {
         super(RestrictedNumberSchema, RestrictedNumberModel);
-        this.settings.useApiRules = false;
+        this.settings.useApiRules = false; // API has no rules
     }
 }
 

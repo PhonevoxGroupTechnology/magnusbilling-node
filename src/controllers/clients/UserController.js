@@ -1,5 +1,5 @@
 import UserModel from '../../models/clients/UserModel.js'
-import UserSchema from '../../schemas/clients/UserSchema.js'
+import UserSchema from '../../schemas/clients/UserHistorySchema.js'
 import BaseController from '../BaseController.js'
 
 class UserController extends BaseController {
