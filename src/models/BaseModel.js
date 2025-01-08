@@ -26,15 +26,20 @@ class BaseModel {
         this.logger = logging.getLogger(`api.model.${this.module}`);
     }
 
+    __getLogger(name) {
+        const l = logging.getLogger(`api.model.${this.module}.${name}`);
+        return l;
+    }
+
     /**
      * Generic method to query the MagnusModel.
      */
     async query(payload) {
-
+        const l = this.__getLogger('query');
         try {
             const result = await MagnusModel.query(payload);
 
-            this.logger.trace(`BaseModel Query result: ${JSON.stringify(result)}`)
+            l.trace(`BaseModel Query result: ${JSON.stringify(result)}`)
 
             // @TODO(adrian): this is ugly. work something out? (this works tho)
             // the problem is that on a query success, when we search someone, read magnus, it DOES NOT returns "success" for us
@@ -56,12 +61,13 @@ class BaseModel {
     }
 
     async getRules(options = { as_schema: false, as_skeleton: false, block_param: [] }) {
+        const l = this.__getLogger('getRules');
         try {
             const rules = await MagnusModel.getRules(this.module, options.as_schema, options.as_skeleton, options.block_param);
 
             let retvalue = rules;
             if (options.as_schema) retvalue = rules;
-            if (!(options.as_schema || options.as_skeleton)) this.logger.warn('Returning rules as plain JSON')
+            if (!(options.as_schema || options.as_skeleton)) l.warn('Returning rules as plain JSON')
 
             return ModelReplier.success({
                 data: retvalue,
@@ -84,6 +90,7 @@ class BaseModel {
      * @returns                             - Result of operation
      */
     async create(userPayload) {
+        const l = this.__getLogger('create');
         const payload = {
             ...userPayload,
             module: this.module,
@@ -93,7 +100,7 @@ class BaseModel {
         try {
             const result = await this.query(payload);
 
-            this.logger.warn('Create on basemodel: ', result);
+            l.warn('Create on basemodel: ', result);
 
             if (result?.success) {
                 return ModelReplier.success({
@@ -116,6 +123,7 @@ class BaseModel {
 
     // updated, needs testing. to test Controller.update() we need to fix getRules first
     async update(userPayload) {
+        const l = this.__getLogger('update');
         const payload = {
             ...userPayload,
             module: this.module,
@@ -144,6 +152,7 @@ class BaseModel {
     }
 
     async delete(input = { id: undefined }) {
+        const l = this.__getLogger('delete');
         const payload = {
             id: input.id,
             module: this.module,
@@ -176,6 +185,7 @@ class BaseModel {
     }
 
     async find(filter) {
+        const l = this.__getLogger('find');
         const payload = {
             filter,
             module: this.module,

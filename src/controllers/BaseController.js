@@ -1,14 +1,17 @@
 import { number } from 'zod';
 import { logging } from '../utils/logging.js';
 import { zodToJson } from '../utils/utils.js';
+import { z } from "zod";
 
-const FUNC_SUFFIX = '';
-const FUNC_POSTFIX = ' - ';
 class BaseController {
     constructor(ControllerSchema, ControllerModel) {
         this.Schema = ControllerSchema
         this.Model = ControllerModel;
         this.logger = logging.getLogger(`api.controller.${ControllerModel.module}`);
+
+        this.settings = {
+            "useApiRules": true, //  whether to use the api rules or not
+        }
 
         this._bindMethods();
     }
@@ -30,8 +33,13 @@ class BaseController {
         });
     }
 
+    __getLogger(name) {
+        const l = logging.getLogger(`api.controller.${this.Model.module}.${name}`);
+        return l;
+    }
+
     filterify(params) {
-        const _FUNC = FUNC_SUFFIX + 'filterify' + FUNC_POSTFIX
+        const l = this.__getLogger('filterify');
         let filter = []
         for (const [key, value] of Object.entries(params)) {
             filter.push({
@@ -46,46 +54,98 @@ class BaseController {
 
     // return the zod schema of a given controller. if prioritize_api is true, prioritize the api schema over the controller schema on merge. if as_skeleton is true, return the skeleton of the schema (everything as z.any().optional()) so we can match the fields. if block_api_param has anything inside the list, block the given parameters when doing api rule parsing
     async getSchema(options = { prioritize_api: false, merge_with: undefined, as_skeleton: false, block_api_param: [] }) {
-        const _FUNC = FUNC_SUFFIX + 'getSchema' + FUNC_POSTFIX
-        this.logger.trace(_FUNC + `Building schema. Options: ${Object.keys(options).join(', ')}`)
+        const l = this.__getLogger('getSchema');
+        l.trace(`Building schema. Options: ${Object.keys(options).join(', ')}`)
         const { prioritize_api = false, merge_with = undefined, as_skeleton = false, block_api_param = [] } = options;
 
-        let RET_SCHEMA // schema to return
+        let RET_SCHEMA; // schema to return
 
-        // get api schema
-        // @TODO(adrian): cache this shit, I dont want to request it all the time
-        this.logger.trace(_FUNC + `Requesting API schema from Model...`)
-        let api_rules_result = await this.Model.getRules({
-            as_schema: true,
-            as_skeleton: as_skeleton,
-            block_param: block_api_param
-        })
+        // Verificar se as regras da API devem ser usadas
+        if (this.settings?.useApiRules !== false) {
+            // get api schema
+            // @TODO(adrian): cache this shit, I dont want to request it all the time
+            l.trace(`Requesting API schema from Model...`);
+            let api_rules_result = await this.Model.getRules({
+                as_schema: true,
+                as_skeleton: as_skeleton,
+                block_param: block_api_param
+            });
 
-        if (!api_rules_result.success) throw new Error(`Failed to get API rules:`, api_rules_result)
-        let API_SCHEMA = api_rules_result.data
+            if (!api_rules_result.success) throw new Error(`Failed to get API rules:`, api_rules_result);
+            let API_SCHEMA = api_rules_result.data;
 
-        // if we merge, how we merge
-        if (merge_with) {
-            this.logger.trace(_FUNC + `Merging schema...`)
-            if (prioritize_api) {
-                this.logger.debug(_FUNC + `Prioritizing API rules`)
-                RET_SCHEMA = merge_with.merge(API_SCHEMA)
+            // Se `merge_with` for fornecido, mesclar os esquemas
+            if (merge_with) {
+                l.trace(`Merging schema...`);
+                if (prioritize_api) {
+                    l.debug(`Prioritizing API rules`);
+                    RET_SCHEMA = merge_with.merge(API_SCHEMA);
+                } else {
+                    l.debug(`Prioritizing Schema rules`);
+                    RET_SCHEMA = API_SCHEMA.merge(merge_with);
+                }
             } else {
-                this.logger.debug(_FUNC + `Prioritizing Schema rules`)
-                RET_SCHEMA = API_SCHEMA.merge(merge_with)
+                l.trace(`No merge.`);
+                RET_SCHEMA = API_SCHEMA;
             }
         } else {
-            this.logger.trace(_FUNC + `No merge.`)
-            RET_SCHEMA = API_SCHEMA
+            l.debug(`API rules are disabled by settings.`);
+            // Caso as regras da API estejam desativadas, retornar apenas `merge_with` ou um schema vazio
+            if (merge_with) {
+                RET_SCHEMA = merge_with;
+            } else {
+                RET_SCHEMA = as_skeleton ? z.object({}).passthrough() : undefined;
+            }
         }
 
-        this.logger.trace(_FUNC + `Returning schema`)
+        l.trace(`Returning schema`);
+        return RET_SCHEMA;
 
-        return RET_SCHEMA
+
+
+
+
+
+
+
+
+
+
+        // // get api schema
+        // // @TODO(adrian): cache this shit, I dont want to request it all the time
+        // l.trace(`Requesting API schema from Model...`)
+        // let api_rules_result = await this.Model.getRules({
+        //     as_schema: true,
+        //     as_skeleton: as_skeleton,
+        //     block_param: block_api_param
+        // })
+
+        // if (!api_rules_result.success) throw new Error(`Failed to get API rules:`, api_rules_result)
+        // let API_SCHEMA = api_rules_result.data
+
+        // // if we merge, how we merge
+        // if (merge_with) {
+        //     l.trace(`Merging schema...`)
+        //     if (prioritize_api) {
+        //         l.debug(`Prioritizing API rules`)
+        //         RET_SCHEMA = merge_with.merge(API_SCHEMA)
+        //     } else {
+        //         l.debug(`Prioritizing Schema rules`)
+        //         RET_SCHEMA = API_SCHEMA.merge(merge_with)
+        //     }
+        // } else {
+        //     l.trace(`No merge.`)
+        //     RET_SCHEMA = API_SCHEMA
+        // }
+
+        // l.trace(`Returning schema`)
+
+        // return RET_SCHEMA
     }
 
     async getRules(req, res, next) {
         try {
+            const l = this.__getLogger('getRules');
             let result = await this.Model.getRules()
 
             if (result.success) {
@@ -110,12 +170,12 @@ class BaseController {
     // CRUD functions
 
     async create(req, res, next, options = { pre_search: false, pre_search_fields: undefined }) {
-
         try {
+            const l = this.__getLogger('create');
             let payload, validated_payload, create_schema, result
 
             // validating
-            this.logger.info(`${req.logprefix} Validating payload...`)
+            l.info(`${req.logprefix} Validating payload...`)
             payload = req.body
             create_schema = await this.getSchema({ merge_with: this.Schema.create() })
             validated_payload = create_schema.strict().parse(payload)
@@ -123,14 +183,14 @@ class BaseController {
             // we gotta do a pre-search if this record already exists before proceeding
             // this is only needed in some specific endpoints like callerid 
             // that we manually have to check if something already exists before creating a new one
-            this.logger.info(`${req.logprefix} Testing for presearch`)
+            l.info(`${req.logprefix} Testing for presearch`)
             if (options.pre_search) {
                 let pre_search_payload = validated_payload
-                this.logger.info(`${req.logprefix} Pre-searching for existing data...`)
+                l.info(`${req.logprefix} Pre-searching for existing data...`)
 
                 // check if we only presearch on specific fields, or we presearch everything
                 if (options.pre_search_fields) {
-                    this.logger.info(`${req.logprefix} Pre-search has specified fields`, options.pre_search_fields)
+                    l.info(`${req.logprefix} Pre-search has specified fields`, options.pre_search_fields)
                     pre_search_payload = {}
                     for (const field of options.pre_search_fields) {
                         pre_search_payload[field] = validated_payload[field]
@@ -140,8 +200,8 @@ class BaseController {
                 let pre_search_id = await this.getId(pre_search_payload)
 
                 if (pre_search_id?.length > 0) {
-                    this.logger.warn('Pre-existing data found! Canceling creation due to probable conflict.')
-                    this.logger.warn(pre_search_id)
+                    l.warn('Pre-existing data found! Canceling creation due to probable conflict.')
+                    l.warn(pre_search_id)
                     return res.status(409).json({
                         success: false,
                         data: null,
@@ -154,9 +214,11 @@ class BaseController {
             }
 
             // creating
+            l.info('Creating record')
             result = await this.Model.create(validated_payload)
             
             // returning
+            l.info('Returning')
             if (!result.success) throw result?.error || new Error(`Unknown error: ${JSON.stringify(result)}}`)
             return res.status(200).json({
                 success: true,
@@ -169,6 +231,7 @@ class BaseController {
     }
 
     async query(req, res, next) {
+        const l = this.__getLogger('query');
         try {
             let search_data, validated_search_data, result;
             const hasQuery = Object.keys(req.query).length > 0;
@@ -182,13 +245,13 @@ class BaseController {
 
             // what is happening: list or search? search via query or params?
             if (hasQuery) {
-                this.logger.debug(`${req.logprefix} Query detected`);
+                l.debug(`${req.logprefix} Query detected`);
                 search_data = req.query;
             } else if (hasParam) {
-                this.logger.debug(`${req.logprefix} Params detected`);
+                l.debug(`${req.logprefix} Params detected`);
                 search_data = req.params;
             } else {
-                this.logger.info(`${req.logprefix} Listing all records`);
+                l.info(`${req.logprefix} Listing all records`);
                 result = await this.Model.list();
                 return res.status(200).json({
                     success: true,
@@ -198,11 +261,11 @@ class BaseController {
             }
 
             // validating
-            this.logger.info(`${req.logprefix} Validating schema...`)
+            l.info(`${req.logprefix} Validating schema...`)
             validated_search_data = await handlers.query(search_data);
 
             // returning
-            this.logger.info(`${req.logprefix} Searching on model...`)
+            l.info(`${req.logprefix} Searching on model...`)
             result = await this.Model.find(this.filterify(validated_search_data));
             if (!result.success) throw result?.error || new Error(`Unknown error: ${JSON.stringify(result)}}`)
             return res.status(200).json({
@@ -212,38 +275,39 @@ class BaseController {
             })
 
         } catch (error) {
-            this.logger.error(`${req.logprefix} Error:`, error)
+            l.error(`${req.logprefix} Error:`, error)
             return next(error)
         }
     };
 
 
     async update(req, res, next, options = { block_api_param: ['id'] }) {
+        const l = this.__getLogger('update');
         try {
             let idToUpdate, payload, validated_payload, result, update_schema
 
-            this.logger.info(`${req.logprefix} Validating ID...`)
+            l.info(`${req.logprefix} Validating ID...`)
             idToUpdate = await this.getId(req.params)
             if (!idToUpdate) {
-                this.logger.info(`${req.logprefix} ID not found`)
+                l.info(`${req.logprefix} ID not found`)
                 return res.status(404).json({
                     success: false,
                     error: 'Target record does not exist'
                 })
             } else if (idToUpdate.length > 1) {
-                this.logger.info(`${req.logprefix} Multiple records found`)
+                l.info(`${req.logprefix} Multiple records found`)
                 return res.status(400).json({
                     success: false,
                     error: 'Multiple records found'
                 })
             } else {
-                this.logger.info(`${req.logprefix} ID found`)
+                l.info(`${req.logprefix} ID found`)
                 idToUpdate = parseInt(idToUpdate[0])
             }
 
             // validating
             payload = { ...req.body, id: idToUpdate }
-            this.logger.info(`${req.logprefix} Validating payload...`)
+            l.info(`${req.logprefix} Validating payload...`)
             update_schema = await this.getSchema({
                 merge_with: this.Schema.update(),
                 as_skeleton: true,
@@ -267,8 +331,9 @@ class BaseController {
     }
 
     async delete(req, res, next) {
+        const l = this.__getLogger('delete');
         try {
-            this.logger.info(`${req.logprefix} Validating ID...`)
+            l.info(`${req.logprefix} Validating ID...`)
             let idToDelete = await this.getId(req.params)
             if (!idToDelete) {
                 return res.status(404).json({
@@ -276,7 +341,7 @@ class BaseController {
                     error: 'Target record does not exist'
                 })
             } else if (idToDelete.length > 1) {
-                this.logger.info(`${req.logprefix} Multiple records found`)
+                l.info(`${req.logprefix} Multiple records found`)
                 return res.status(400).json({
                     success: false,
                     error: 'Multiple records found'
@@ -285,9 +350,9 @@ class BaseController {
                 idToDelete = parseInt(idToDelete[0])
             }
 
-            this.logger.info(`${req.logprefix} Deleting record...`)
+            l.info(`${req.logprefix} Deleting record...`)
             const result = await this.Model.delete({ id: idToDelete })
-            this.logger.debug(`${req.logprefix} ${JSON.stringify(result)}`)
+            l.debug(`${req.logprefix} ${JSON.stringify(result)}`)
 
             if (!result.success) {
                 return res.status(500).json(result)
@@ -300,6 +365,7 @@ class BaseController {
     }
 
     async getId(searchObject) {
+        const l = this.__getLogger('getId')
         let payload = this.filterify(searchObject)
         const result = await this.Model.find(payload)
         const data = result?.data
@@ -307,18 +373,18 @@ class BaseController {
         if (!result.success) throw result?.error || new Error(`Unknown error: ${JSON.stringify(result)}}`)
 
         if (!data || data?.count === 0 || data?.rows?.length === 0) {
-            this.logger.debug('No record found', searchObject)
+            l.debug('No record found', searchObject)
             return null
         }
 
         if (data?.count > 1 || data?.rows?.length > 1) {
             const foundIds = data?.rows.map(row => row.id)
-            this.logger.debug(`Multiple records found: ${foundIds}`, searchObject)
+            l.debug(`Multiple records found: ${foundIds}`, searchObject)
             return foundIds
         }
 
         const foundId = data?.rows[0].id
-        this.logger.debug(`Found id: ${foundId}`, searchObject)
+        l.debug(`Found id: ${foundId}`, searchObject)
         return [foundId] // return as array for consistency
     }
 
