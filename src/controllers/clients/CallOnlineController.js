@@ -49,11 +49,11 @@ class CallOnlineController extends BaseController {
         data: null
     })
 
-    query = async (req, res, next) => res.status(404).json({
-        success: false,
-        message: 'Method not available',
-        data: null
-    })
+    // query = async (req, res, next) => res.status(404).json({
+    //     success: false,
+    //     message: 'Method not available',
+    //     data: null
+    // })
 
     update = async (req, res, next) => res.status(404).json({
         success: false,
