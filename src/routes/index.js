@@ -6,11 +6,13 @@ import routerSipuras from './clients/AtalinksysRoute.js';
 import routerIax from './clients/IaxRoute.js';
 import routerRestrictedNumber from './clients/RestrictedNumberRoute.js';
 import routerUserHistory from './clients/UserHistoryRoute.js';
+import routerCallOnline from './clients/CallOnlineRoute.js';
 import routerTest from './tests/TestRoute.js';
 import { handleUnexpected } from '../middlewares/ErrorHandler.js';
 
 const router = Router();
 
+router.use('/clients', routerCallOnline);
 router.use('/clients', routerUserHistory);
 router.use('/clients', routerRestrictedNumber); // essa bosta nao tem regras de api, tem que fazer lógica pra isso
 router.use('/clients', routerIax);

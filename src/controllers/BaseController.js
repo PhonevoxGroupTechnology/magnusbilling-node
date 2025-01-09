@@ -7,7 +7,6 @@ class BaseController {
     constructor(ControllerSchema, ControllerModel) {
         this.Schema = ControllerSchema
         this.Model = ControllerModel;
-        this.logger = logging.getLogger(`api.controller.${ControllerModel.module}`);
 
         this.settings = {
             "useApiRules": true, //  whether to use the api rules or not
