@@ -7,18 +7,27 @@ class MagnusController {
 
     // Use this to send requests straight to MagnusModel.query
     // api/tests/query
-    async _testQuery(req, res) {
-        return res.json(await MagnusModel.query(req.body))
+    async _testQuery(req, res, next) {
+        try {
+            const result = await MagnusModel.query(req.body)
+            return result
+        } catch (error) {
+            next(error)
+        }
     }
 
     // Use this to get the parsed api rules from MagnusModel.getRules
     // api/tests/rules/:module
-    async _getParsedRule(req, res) {
-        const { module } = req.params;
-        let rules = await MagnusModel.getRules(module, false, true)
-        // rules = zodToJson(rules)
-
-        res.json(rules)
+    async _getParsedRule(req, res, next) {
+        try {
+            const { module } = req.params;
+            let rules = await MagnusModel.getRules(module, false, true)
+            // rules = zodToJson(rules)
+    
+            res.json(rules)
+        } catch (error) {
+            next(error)
+        }
     }
 }
 
