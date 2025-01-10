@@ -5,6 +5,7 @@ class SipSchema {
   // what is needed to create an user (besides api requirements)
   static create() {
     return z.object({
+        id_user: z.number(), // user id where the sip account belongs
         defaultuser: z.string(), // sip account name
         secret: z.string(), // sip account password
         callerid: z.string().default(''), // sip account callerid
