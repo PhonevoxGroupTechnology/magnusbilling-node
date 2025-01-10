@@ -40,6 +40,15 @@ class CallOnlineSchema {
       id: z.number().int({ message: "ID is required for deletion" }),
     });
   }
+
+  static spy() {
+    return z.object({
+      channel: z.string(),
+      id_sip: z.number(),
+      type: z.string() // b:spy, w:whisper | https://docs.asterisk.org/Latest_API/API_Documentation/Dialplan_Applications/ChanSpy/#arguments
+    })
+  }
+
 }
 
 export default CallOnlineSchema

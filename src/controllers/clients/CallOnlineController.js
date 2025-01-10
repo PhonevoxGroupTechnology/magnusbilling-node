@@ -43,6 +43,28 @@ class CallOnlineController extends BaseController {
         
     }
 
+    spy = async(req, res, next) => {
+        const l = this.__getLogger('spycall');
+        try {
+            let payload
+
+            // validate
+            payload = this.Schema.spy().strict().parse(req.body);
+
+            // send req and get res
+            let result = await CallOnlineModel.spy(payload);
+            if (!result.success) throw result?.error || new Error(`Unknown error: ${JSON.stringify(result)}}`)
+            return res.status(200).json({
+                success: true,
+                message: 'Records retrieved successfully',
+                data: result.data
+            })
+        } catch (error) {
+            l.critical(error)
+            next(error)
+        }
+    }
+
     create = async (req, res, next) => res.status(404).json({
         success: false,
         message: 'Method not available',

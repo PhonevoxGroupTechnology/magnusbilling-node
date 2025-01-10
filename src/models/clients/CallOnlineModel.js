@@ -11,15 +11,24 @@ class CallOnlineModel extends BaseModel {
     // @TODO(Adrian):
     // make this more secure. It dont really need any method from BaseModel except for like, 2 or 3
 
-    async hangup(payload) {
+    async hangup(data) {
         const l = this.__getLogger('find');
-        payload = {
+        const payload = {
             module: this.module,
             action: 'destroy',
         };
 
-        // query should return a ModelReplier object
-        // we just pass it on
+        return await this.query(payload);
+    }
+
+    async spy(data) {
+        const l = this.__getLogger('spy');
+        const payload = {
+            module: this.module,
+            action: 'spyCall',
+            ...data
+        };
+
         return await this.query(payload);
     }
 

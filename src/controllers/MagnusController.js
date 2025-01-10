@@ -10,7 +10,7 @@ class MagnusController {
     async _testQuery(req, res, next) {
         try {
             const result = await MagnusModel.query(req.body)
-            return result
+            return res.json(result)
         } catch (error) {
             next(error)
         }

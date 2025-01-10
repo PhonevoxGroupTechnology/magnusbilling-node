@@ -8,8 +8,6 @@ import { z } from 'zod';
 import { QueryError, MagnusError } from '../utils/errors.js';
 // @TODO(adrian): implement those better?
 
-const logger = logging.getLogger('api.model.magnus');
-
 /**
  * Generates a Nonce for querying Magnus
  * 
@@ -19,7 +17,6 @@ const generateNonce = () => {
     let nonce = new Date().getTime().toString();
     nonce = nonce.slice(-10) + nonce.substr(2,6);
 
-    logger.unit(`- Nonce: ${nonce}`)
     return nonce
 }
 
@@ -37,7 +34,6 @@ const signData = (data, secret) => {
     let hex_ca_hmac = content_aware_hmac.digest('hex'); // hexed content-aware hmac512 (final sign)
 
     let sign = hex_ca_hmac
-    logger.unit(`- Sign: ${sign}`)
     return sign
 }
 
@@ -188,6 +184,11 @@ class MagnusModel {
         this.PUBLIC_URL = process.env.MAGNUS_PUBLIC_URL
     }
 
+    __getLogger(name) {
+        const l = logging.getLogger(`api.model.MagnusModel.${name}`);
+        return l;
+    }
+
     /**
      * This function receives a module and returns the rules for that module
      * 
@@ -198,20 +199,21 @@ class MagnusModel {
      * @returns                  - Parsed rules. May vary depending on booleans used
      */
     async getRules(module, schema=false, skeleton=false, block_param=[]) {
+        const l = this.__getLogger('getRules')
         let ret;
 
         if (skeleton && !schema ) {
-            logger.warn(`${module}: Skeleton was requested, but we are not building a schema. This will be ignored.`)
+            l.warn(`${module}: Skeleton was requested, but we are not building a schema. This will be ignored.`)
         }
 
         // raw rule from api
-        logger.unit(`Getting rules for module ${module}`)
+        l.unit(`Getting rules for module ${module}`)
         let rules = await this.query({
             module: module,
             action: '',
             getFields: 1
         })
-        logger.unit(`Got rules for module ${module}:\n${JSON.stringify(rules)}`)
+        l.unit(`Got rules for module ${module}:\n${JSON.stringify(rules)}`)
 
         if (rules) {
             ret = parseApiRules(rules, block_param) // basic parse
@@ -225,8 +227,9 @@ class MagnusModel {
     async query(data) {
         // @TODO(adrian): make this support multi-id action:destroy
         // for now, no need. // 09/12/24, 16:22
-        logger.trace(`MBQuery - Sending query to MagnusBilling...`)
-        logger.debug(`MBQuery - Data: ${JSON.stringify(data)}`)
+        const l = this.__getLogger('query')
+        l.trace(`MBQuery - Sending query to MagnusBilling...`)
+        l.debug(`MBQuery - Data: ${JSON.stringify(data)}`)
         let { module, action } = data
 
         data.nonce = generateNonce()
@@ -239,14 +242,21 @@ class MagnusModel {
         }
 
         // send the request
-        const request_url = `${this.PUBLIC_URL}/index.php/${module}/${action}`
+        module = module ?? ''
+        action = action ?? ''
+        let request_url = `${this.PUBLIC_URL}/index.php/${module}/${action ?? ''}`
+        if (!module) {
+            l.warn('No module provided. Using default URL.')
+            if (action) l.warn('Ignoring action')
+            request_url = `${this.PUBLIC_URL}/index.php`
+        }
         const protocol = request_url.startsWith('https') ? https : http
         const agent = new protocol.Agent({
             rejectUnauthorized: false,
         })
-        logger.unit(`Sending request to ${request_url}\nRaw post data:\n${JSON.stringify(post_data)}`)
-        logger.unit(`- Headers: ${JSON.stringify(headers)}`)
-        logger.unit(`- Body: ${post_data}`)
+        l.unit(`Sending request to ${request_url}\nRaw post data:\n${JSON.stringify(post_data)}`)
+        l.unit(`- Headers: ${JSON.stringify(headers)}`)
+        l.unit(`- Body: ${post_data}`)
 
         let response
         try {
@@ -257,9 +267,9 @@ class MagnusModel {
                 httpsAgent: protocol === https ? agent : undefined,
             })
 
-            logger.trace(`MBQuery - Response received.`)
-            logger.unit(`Received response from ${request_url}\n${JSON.stringify(response.data)}`)
-            logger.unit(`- Response: ${JSON.stringify(response.data)}`)
+            l.trace(`MBQuery - Response received.`)
+            l.unit(`Received response from ${request_url}\n${JSON.stringify(response.data)}`)
+            l.unit(`- Response: ${JSON.stringify(response.data)}`)
 
             if (response?.data?.success === false) {
                 throw new QueryError(response.data.errors || response.data)
@@ -267,7 +277,7 @@ class MagnusModel {
 
             return response.data;
         } catch (error) {
-            logger.critical(`Failed to send request to ${request_url}: ${error}`)
+            l.critical(`Failed to send request to ${request_url}: ${error}`)
 
             // axios error
             if (error instanceof axios.AxiosError) throw error
