@@ -255,7 +255,8 @@ class MagnusModel {
             rejectUnauthorized: false,
         })
         l.unit(`Sending request to ${request_url}\nRaw post data:\n${JSON.stringify(post_data)}`)
-        l.unit(`- Headers: ${JSON.stringify(headers)}`)
+        // l.unit(`- Headers: ${JSON.stringify(headers)}`)
+        l.unit(`- Headers: #OCULTO NESTE MOMENTO POR SEGURANÇA, ESTOU GRAVANDO VIDEO TUTORIAL#`)
         l.unit(`- Body: ${post_data}`)
 
         let response
